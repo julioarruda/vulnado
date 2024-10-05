@@ -23,3 +23,14 @@ The docker network created by `docker-compose` maps pretty well to a multi-tier 
 * [XSS - Cross Site Scripting](exercises/02-xss.md)
 * [SSRF - Server Side Request Forgery](exercises/03-ssrf.md)
 * [RCE - Remote Code Execution & Reverse Shell](exercises/04-rce-reverse-shell.md)
+
+## Continuous Integration
+
+This repository uses GitHub Actions for Continuous Integration (CI). The CI workflow is defined in the `.github/workflows/ci.yml` file.
+
+The CI workflow is triggered on push and pull request events to the `main` branch. It consists of the following jobs:
+
+* `build`: Sets up Java 8, checks out the repository, and runs `mvn clean install` to build the application.
+* `test`: Runs after the `build` job, sets up Docker, and runs `docker-compose up` to start the services and verify the application.
+
+You can view the CI results in the "Actions" tab of the GitHub repository.
