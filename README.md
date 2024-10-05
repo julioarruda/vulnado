@@ -34,3 +34,5 @@ The CI workflow is triggered on push and pull request events to the `main` branc
 * `test`: Runs after the `build` job, sets up Docker, and runs `docker-compose up` to start the services and verify the application.
 
 You can view the CI results in the "Actions" tab of the GitHub repository.
+
+Note: The CI workflow now includes a step to check for the existence of Docker Compose before running the Docker container. This ensures that Docker Compose is available on the runner, preventing potential failures.
