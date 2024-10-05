@@ -237,4 +237,48 @@ class UserTest {
 
         System.setErr(System.err);
     }
+
+    @Test
+    void token_ShouldContainCorrectUsername() {
+        String token = testUser.token(TEST_SECRET);
+        SecretKey key = Keys.hmacShaKeyFor(TEST_SECRET.getBytes());
+        String subject = Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody().getSubject();
+        assertEquals(testUser.username, subject, "Token should contain the correct username");
+    }
+
+    @Test
+    void fetch_ShouldHandleMultipleResultsAndReturnFirstOne() throws Exception {
+        String username = "duplicateUser";
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(true, true, false);
+        when(mockResultSet.getString("user_id")).thenReturn("1", "2");
+        when(mockResultSet.getString("username")).thenReturn(username, username);
+        when(mockResultSet.getString("password")).thenReturn("password1", "password2");
+
+        User result = User.fetch(username);
+
+        assertNotNull(result, "Fetch should return a user when multiple results exist");
+        assertEquals("1", result.id, "Fetch should return the first user when multiple results exist");
+    }
+
+    @Test
+    void fetch_ShouldTrimWhitespaceFromUsername() throws Exception {
+        String username = "  whitespaceUser  ";
+        String trimmedUsername = "whitespaceUser";
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(true);
+        when(mockResultSet.getString("user_id")).thenReturn("1");
+        when(mockResultSet.getString("username")).thenReturn(trimmedUsername);
+        when(mockResultSet.getString("password")).thenReturn("password");
+
+        User result = User.fetch(username);
+
+        assertNotNull(result, "Fetch should return a user for username with whitespace");
+        assertEquals(trimmedUsername, result.username, "Fetched user should have trimmed username");
+        verify(mockStatement).executeQuery(contains("'" + trimmedUsername + "'"));
+    }
 }
