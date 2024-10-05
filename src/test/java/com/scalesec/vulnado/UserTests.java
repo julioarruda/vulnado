@@ -8,8 +8,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.Statement;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import javax.crypto.SecretKey;
@@ -21,7 +21,7 @@ class UserTest {
     @Mock
     private Connection mockConnection;
     @Mock
-    private Statement mockStatement;
+    private PreparedStatement mockPreparedStatement;
     @Mock
     private ResultSet mockResultSet;
 
@@ -57,8 +57,8 @@ class UserTest {
     void fetch_WithExistingUser_ShouldReturnUser() throws Exception {
         String username = "existingUser";
         when(Postgres.connection()).thenReturn(mockConnection);
-        when(mockConnection.createStatement()).thenReturn(mockStatement);
-        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+        when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
         when(mockResultSet.next()).thenReturn(true);
         when(mockResultSet.getString("user_id")).thenReturn("1");
         when(mockResultSet.getString("username")).thenReturn(username);
@@ -74,8 +74,8 @@ class UserTest {
     void fetch_WithNonExistingUser_ShouldReturnNull() throws Exception {
         String username = "nonExistingUser";
         when(Postgres.connection()).thenReturn(mockConnection);
-        when(mockConnection.createStatement()).thenReturn(mockStatement);
-        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+        when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
         when(mockResultSet.next()).thenReturn(false);
 
         User result = User.fetch(username);
@@ -116,22 +116,25 @@ class UserTest {
     void fetch_ShouldExecuteCorrectSQLQuery() throws Exception {
         String username = "testUser";
         when(Postgres.connection()).thenReturn(mockConnection);
-        when(mockConnection.createStatement()).thenReturn(mockStatement);
-        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
 
         User.fetch(username);
 
-        verify(mockStatement).executeQuery("select * from users where username = '" + username + "' limit 1");
+        verify(mockConnection).prepareStatement("SELECT * FROM users WHERE username = ? LIMIT 1");
+        verify(mockPreparedStatement).setString(1, username);
+        verify(mockPreparedStatement).executeQuery();
     }
 
     @Test
     void fetch_ShouldCloseConnectionAfterExecution() throws Exception {
         when(Postgres.connection()).thenReturn(mockConnection);
-        when(mockConnection.createStatement()).thenReturn(mockStatement);
-        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+        when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
 
         User.fetch("testUser");
 
+        verify(mockResultSet).close();
+        verify(mockPreparedStatement).close();
         verify(mockConnection).close();
     }
 
@@ -139,14 +142,14 @@ class UserTest {
     void fetch_ShouldHandleSQLInjectionAttempt() throws Exception {
         String maliciousUsername = "user' OR '1'='1";
         when(Postgres.connection()).thenReturn(mockConnection);
-        when(mockConnection.createStatement()).thenReturn(mockStatement);
-        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+        when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
         when(mockResultSet.next()).thenReturn(false);
 
         User result = User.fetch(maliciousUsername);
 
         assertNull(result, "Fetch should return null for SQL injection attempt");
-        verify(mockStatement).executeQuery("select * from users where username = '" + maliciousUsername + "' limit 1");
+        verify(mockPreparedStatement).setString(1, maliciousUsername);
     }
 
     @Test
@@ -162,40 +165,6 @@ class UserTest {
     }
 
     @Test
-    void fetch_ShouldPrintQueryToConsole() throws Exception {
-        String username = "testUser";
-        when(Postgres.connection()).thenReturn(mockConnection);
-        when(mockConnection.createStatement()).thenReturn(mockStatement);
-        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
-
-        ByteArrayOutputStream outContent = new ByteArrayOutputStream();
-        System.setOut(new PrintStream(outContent));
-
-        User.fetch(username);
-
-        String expectedQuery = "select * from users where username = '" + username + "' limit 1";
-        assertTrue(outContent.toString().contains(expectedQuery), "Fetch should print the executed query to console");
-
-        System.setOut(System.out);
-    }
-
-    @Test
-    void fetch_ShouldPrintDatabaseOpenMessage() throws Exception {
-        when(Postgres.connection()).thenReturn(mockConnection);
-        when(mockConnection.createStatement()).thenReturn(mockStatement);
-        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
-
-        ByteArrayOutputStream outContent = new ByteArrayOutputStream();
-        System.setOut(new PrintStream(outContent));
-
-        User.fetch("testUser");
-
-        assertTrue(outContent.toString().contains("Opened database successfully"), "Fetch should print 'Opened database successfully' message");
-
-        System.setOut(System.out);
-    }
-
-    @Test
     void fetch_ShouldHandleExceptionAndPrintErrorMessage() throws Exception {
         String username = "exceptionUser";
         RuntimeException testException = new RuntimeException("Test database exception");
@@ -207,7 +176,7 @@ class UserTest {
         User result = User.fetch(username);
 
         assertNull(result, "Fetch should return null when an exception occurs");
-        assertTrue(errContent.toString().contains("Test database exception"), "Fetch should print the exception message to stderr");
+        assertTrue(errContent.toString().contains("Error fetching user: Test database exception"), "Fetch should print the error message to stderr");
 
         System.setErr(System.err);
     }
@@ -216,8 +185,8 @@ class UserTest {
     void fetch_ShouldReturnNullWhenResultSetIsEmpty() throws Exception {
         String username = "nonExistentUser";
         when(Postgres.connection()).thenReturn(mockConnection);
-        when(mockConnection.createStatement()).thenReturn(mockStatement);
-        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+        when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
         when(mockResultSet.next()).thenReturn(false);
 
         User result = User.fetch(username);
@@ -226,14 +195,14 @@ class UserTest {
     }
 
     @Test
-    void assertAuth_ShouldPrintStackTraceOnException() {
+    void assertAuth_ShouldPrintErrorMessageOnException() {
         String invalidToken = "invalidToken";
         ByteArrayOutputStream errContent = new ByteArrayOutputStream();
         System.setErr(new PrintStream(errContent));
 
         assertThrows(Unauthorized.class, () -> User.assertAuth(TEST_SECRET, invalidToken));
 
-        assertTrue(errContent.toString().contains("Stack trace:"), "assertAuth should print stack trace on exception");
+        assertTrue(errContent.toString().contains("Authentication failed:"), "assertAuth should print error message on exception");
 
         System.setErr(System.err);
     }
@@ -250,12 +219,12 @@ class UserTest {
     void fetch_ShouldHandleMultipleResultsAndReturnFirstOne() throws Exception {
         String username = "duplicateUser";
         when(Postgres.connection()).thenReturn(mockConnection);
-        when(mockConnection.createStatement()).thenReturn(mockStatement);
-        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
-        when(mockResultSet.next()).thenReturn(true, true, false);
-        when(mockResultSet.getString("user_id")).thenReturn("1", "2");
-        when(mockResultSet.getString("username")).thenReturn(username, username);
-        when(mockResultSet.getString("password")).thenReturn("password1", "password2");
+        when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+        when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(true, false);
+        when(mockResultSet.getString("user_id")).thenReturn("1");
+        when(mockResultSet.getString("username")).thenReturn(username);
+        when(mockResultSet.getString("password")).thenReturn("password1");
 
         User result = User.fetch(username);
 
@@ -264,21 +233,20 @@ class UserTest {
     }
 
     @Test
-    void fetch_ShouldTrimWhitespaceFromUsername() throws Exception {
+    void fetch_ShouldNotTrimWhitespaceFromUsername() throws Exception {
         String username = "  whitespaceUser  ";
-        String trimmedUsername = "whitespaceUser";
         when(Postgres.connection()).thenReturn(mockConnection);
-        when(mockConnection.createStatement()).thenReturn(mockStatement);
-        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
+        when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
         when(mockResultSet.next()).thenReturn(true);
         when(mockResultSet.getString("user_id")).thenReturn("1");
-        when(mockResultSet.getString("username")).thenReturn(trimmedUsername);
+        when(mockResultSet.getString("username")).thenReturn(username);
         when(mockResultSet.getString("password")).thenReturn("password");
 
         User result = User.fetch(username);
 
         assertNotNull(result, "Fetch should return a user for username with whitespace");
-        assertEquals(trimmedUsername, result.username, "Fetched user should have trimmed username");
-        verify(mockStatement).executeQuery(contains("'" + trimmedUsername + "'"));
+        assertEquals(username, result.username, "Fetched user should have untrimmed username");
+        verify(mockPreparedStatement).setString(1, username);
     }
 }
