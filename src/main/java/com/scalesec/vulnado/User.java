@@ -29,7 +29,7 @@ public class User {
       SecretKey key = Keys.hmacShaKeyFor(secret.getBytes());
       Jwts.parser()
         .setSigningKey(key)
-        .parseClaimsJws(token);
+        .parseClaimsJws(token)
     } catch(Exception e) {
       e.printStackTrace();
       throw new Unauthorized(e.getMessage());
