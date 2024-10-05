@@ -126,7 +126,7 @@ jobs:
               --form "DocumentationAudience=Developer" \
               --form "PromptId=DocCreator__DocumentCode_V3" \
               --form "TargetExtension=md" \
-              --form "Llm=GPT_4_128k" \
+              --form "Llm=AWS_CLAUDE" \
               --form "AdditionalInstructions=Generate all answers in english and If the code have vulnerabilities, describe all in a new # vulnerabilities section")           
             echo "API Response: $RESPONSE"
             JOB_ID=$(echo $RESPONSE)
