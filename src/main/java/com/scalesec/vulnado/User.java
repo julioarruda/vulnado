@@ -48,7 +48,7 @@ public class User {
       System.out.println(query);
       ResultSet rs = stmt.executeQuery(query);
       if (rs.next()) {
-        String user_id = rs.getString("user_id");
+        String user_id = rs.getString("user_id"
         String username = rs.getString("username");
         String password = rs.getString("password");
         user = new User(user_id, username, password);
