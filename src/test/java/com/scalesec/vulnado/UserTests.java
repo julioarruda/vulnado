@@ -13,6 +13,8 @@ import java.sql.Statement;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import javax.crypto.SecretKey;
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 
 class UserTest {
 
@@ -166,16 +168,14 @@ class UserTest {
         when(mockConnection.createStatement()).thenReturn(mockStatement);
         when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
 
-        // Redirect System.out to capture printed messages
-        java.io.ByteArrayOutputStream outContent = new java.io.ByteArrayOutputStream();
-        System.setOut(new java.io.PrintStream(outContent));
+        ByteArrayOutputStream outContent = new ByteArrayOutputStream();
+        System.setOut(new PrintStream(outContent));
 
         User.fetch(username);
 
         String expectedQuery = "select * from users where username = '" + username + "' limit 1";
         assertTrue(outContent.toString().contains(expectedQuery), "Fetch should print the executed query to console");
 
-        // Reset System.out
         System.setOut(System.out);
     }
 
@@ -185,15 +185,56 @@ class UserTest {
         when(mockConnection.createStatement()).thenReturn(mockStatement);
         when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
 
-        // Redirect System.out to capture printed messages
-        java.io.ByteArrayOutputStream outContent = new java.io.ByteArrayOutputStream();
-        System.setOut(new java.io.PrintStream(outContent));
+        ByteArrayOutputStream outContent = new ByteArrayOutputStream();
+        System.setOut(new PrintStream(outContent));
 
         User.fetch("testUser");
 
         assertTrue(outContent.toString().contains("Opened database successfully"), "Fetch should print 'Opened database successfully' message");
 
-        // Reset System.out
         System.setOut(System.out);
+    }
+
+    @Test
+    void fetch_ShouldHandleExceptionAndPrintErrorMessage() throws Exception {
+        String username = "exceptionUser";
+        RuntimeException testException = new RuntimeException("Test database exception");
+        when(Postgres.connection()).thenThrow(testException);
+
+        ByteArrayOutputStream errContent = new ByteArrayOutputStream();
+        System.setErr(new PrintStream(errContent));
+
+        User result = User.fetch(username);
+
+        assertNull(result, "Fetch should return null when an exception occurs");
+        assertTrue(errContent.toString().contains("Test database exception"), "Fetch should print the exception message to stderr");
+
+        System.setErr(System.err);
+    }
+
+    @Test
+    void fetch_ShouldReturnNullWhenResultSetIsEmpty() throws Exception {
+        String username = "nonExistentUser";
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(false);
+
+        User result = User.fetch(username);
+
+        assertNull(result, "Fetch should return null when the ResultSet is empty");
+    }
+
+    @Test
+    void assertAuth_ShouldPrintStackTraceOnException() {
+        String invalidToken = "invalidToken";
+        ByteArrayOutputStream errContent = new ByteArrayOutputStream();
+        System.setErr(new PrintStream(errContent));
+
+        assertThrows(Unauthorized.class, () -> User.assertAuth(TEST_SECRET, invalidToken));
+
+        assertTrue(errContent.toString().contains("Stack trace:"), "assertAuth should print stack trace on exception");
+
+        System.setErr(System.err);
     }
 }

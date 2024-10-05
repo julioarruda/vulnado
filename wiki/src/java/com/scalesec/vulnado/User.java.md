@@ -7,66 +7,61 @@ This Java class, `User`, handles user authentication, token generation, and data
 ## Process Flow
 
 ```mermaid
-graph TD
+flowchart TD
     A["User Constructor"] --> B["Token Generation"]
-    B --> C["JWT Creation"]
-    D["Assert Authentication"] --> E{"Valid Token?"}
-    E -->|Yes| F["Authenticated"]
-    E -->|No| G["Unauthorized Exception"]
-    H["Fetch User"] --> I["Database Connection"]
-    I --> J["Execute SQL Query"]
-    J --> K{"User Found?"}
-    K -->|Yes| L["Create User Object"]
-    K -->|No| M["Return null"]
+    B --> C{"Assert Authentication"}
+    C -->|"Valid"| D["Fetch User"]
+    C -->|"Invalid"| E["Throw Unauthorized"]
+    D --> F["Database Query"]
+    F -->|"User Found"| G["Create User Object"]
+    F -->|"User Not Found"| H["Return null"]
 ```
 
 ## Insights
 
-- The class uses JWT (JSON Web Tokens) for authentication purposes.
-- User data is stored in a PostgreSQL database.
-- The `fetch` method uses a potentially unsafe SQL query construction.
+- The class uses JWT (JSON Web Tokens) for authentication.
+- Database queries are constructed using string concatenation, which is a security risk.
+- The `fetch` method retrieves user data from a PostgreSQL database.
 - Error handling is implemented, but exceptions are printed to standard error.
-- The class doesn't include password hashing or verification methods.
+- The class uses a custom `Unauthorized` exception for authentication failures.
 
 ## Dependencies
 
 ```mermaid
-graph LR
-    User.java --- |"Uses"| jwt["JWT Library"]
-    User.java --- |"Connects"| postgres["PostgreSQL Database"]
-    User.java --- |"Imports"| java_sql["java.sql"]
+flowchart LR
+    User.java --- |"Uses"| Jwts
+    User.java --- |"Connects"| Postgres
+    User.java --- |"Throws"| Unauthorized
 ```
 
-- `JWT Library`: Used for token generation and validation (io.jsonwebtoken package)
-- `PostgreSQL Database`: Stores and retrieves user information
-- `java.sql`: Provides database connectivity and query execution
+- `Jwts`: Used for JWT token generation and parsing
+- `Postgres`: Provides database connection (assumed to be a custom class)
+- `Unauthorized`: Custom exception class for authentication failures (not shown in the provided code)
 
 ## Data Manipulation (SQL)
 
-`users`: SELECT operation to fetch user data based on username
+| Entity | Attributes | Data Type | Description |
+|--------|------------|-----------|-------------|
+| users  | user_id    | String    | Unique identifier for the user |
+|        | username   | String    | User's username |
+|        | password   | String    | User's hashed password |
 
-| Column Name | Data Type | Description |
-|-------------|-----------|-------------|
-| user_id     | String    | Unique identifier for the user |
-| username    | String    | User's username |
-| password    | String    | User's hashed password |
+`users`: SELECT operation to fetch user data based on the provided username
 
 ## Vulnerabilities
 
-1. SQL Injection: The `fetch` method constructs the SQL query by directly concatenating user input (`un`) into the query string. This is a severe security vulnerability that could allow malicious users to manipulate the query and potentially access or modify unauthorized data.
+1. SQL Injection: The `fetch` method constructs the SQL query using string concatenation with user input (`un`), making it vulnerable to SQL injection attacks. An attacker could manipulate the `un` parameter to execute arbitrary SQL commands.
 
-2. Weak Secret Key Handling: The `token` and `assertAuth` methods convert the secret string directly to bytes without proper key derivation. This may result in weak keys if the secret is not sufficiently long or complex.
+2. Insecure Password Storage: The `hashedPassword` field suggests that passwords might be stored as hashes, but the implementation details are not visible. Ensure that a secure hashing algorithm with salt is used.
 
-3. Exception Handling: The `assertAuth` method prints the stack trace of exceptions, which might leak sensitive information in production environments.
+3. Exception Handling: Exceptions are printed to standard error, which might leak sensitive information in production environments.
 
-4. Plaintext Passwords: The `User` class stores passwords in the `hashedPassword` field, but there's no evidence of actual hashing. Storing plaintext passwords is a significant security risk.
+4. Token Security: The JWT token generation uses HMAC-SHA, but the key size is not specified. Ensure that a sufficiently large key size is used (at least 256 bits for HMAC-SHA256).
 
-5. Inefficient Database Connection: The `fetch` method opens and closes a database connection for each query, which is inefficient for high-volume applications.
+5. Database Connection Management: The database connection is closed in the `try` block, which might not execute if an exception occurs. Consider using try-with-resources or closing the connection in a `finally` block.
 
-6. Lack of Prepared Statements: The use of string concatenation for SQL queries instead of prepared statements increases vulnerability to SQL injection and reduces query efficiency.
+6. Hardcoded Database Credentials: The `Postgres.connection()` method likely contains hardcoded database credentials, which is a security risk. Consider using environment variables or a secure configuration management system.
 
-7. Unlimited Token Validity: The generated JWT tokens don't include expiration claims, potentially allowing them to be valid indefinitely.
+7. Lack of Input Validation: There's no visible input validation for the `username` parameter in the `fetch` method, which could lead to various security issues.
 
-8. Insecure Error Messages: Detailed error messages from database operations are printed to the console, potentially exposing sensitive information.
-
-These vulnerabilities should be addressed to improve the security and reliability of the application.
+To address these vulnerabilities, implement prepared statements for database queries, use secure password hashing algorithms, improve exception handling, ensure proper key management for JWT tokens, and add input validation for all user-supplied data.
