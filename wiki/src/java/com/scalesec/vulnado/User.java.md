@@ -7,55 +7,66 @@ This Java class, `User`, handles user authentication, token generation, and data
 ## Process Flow
 
 ```mermaid
-flowchart TD
+graph TD
     A["User Constructor"] --> B["Token Generation"]
-    B --> C{"Authentication"}
-    C -->|"Success"| D["Fetch User"]
-    C -->|"Failure"| E["Throw Unauthorized"]
-    D --> F["Database Query"]
-    F --> G["Create User Object"]
-    G --> H["Return User"]
+    B --> C["JWT Creation"]
+    D["Assert Authentication"] --> E{"Valid Token?"}
+    E -->|Yes| F["Authenticated"]
+    E -->|No| G["Unauthorized Exception"]
+    H["Fetch User"] --> I["Database Connection"]
+    I --> J["Execute SQL Query"]
+    J --> K{"User Found?"}
+    K -->|Yes| L["Create User Object"]
+    K -->|No| M["Return null"]
 ```
 
 ## Insights
 
-- The class uses JWT (JSON Web Tokens) for authentication.
+- The class uses JWT (JSON Web Tokens) for authentication purposes.
 - User data is stored in a PostgreSQL database.
 - The `fetch` method uses a potentially unsafe SQL query construction.
 - Error handling is implemented, but exceptions are printed to standard error.
-- The class doesn't handle password hashing or verification directly.
+- The class doesn't include password hashing or verification methods.
 
 ## Dependencies
 
 ```mermaid
-flowchart LR
-    User.java --- |"Uses"| Postgres
-    User.java --- |"Uses"| JJWT
-    User.java --- |"Accesses"| PostgreSQL_Database
+graph LR
+    User.java --- |"Uses"| jwt["JWT Library"]
+    User.java --- |"Connects"| postgres["PostgreSQL Database"]
+    User.java --- |"Imports"| java_sql["java.sql"]
 ```
 
-- `Postgres`: Used for database connection. Likely a custom class for managing PostgreSQL connections.
-- `JJWT`: Java JWT library used for token generation and parsing.
-- `PostgreSQL_Database`: The database where user information is stored and retrieved.
+- `JWT Library`: Used for token generation and validation (io.jsonwebtoken package)
+- `PostgreSQL Database`: Stores and retrieves user information
+- `java.sql`: Provides database connectivity and query execution
 
 ## Data Manipulation (SQL)
 
-| Entity | Description |
-|--------|-------------|
-| `users` | SELECT operation to fetch user details based on username |
+`users`: SELECT operation to fetch user data based on username
+
+| Column Name | Data Type | Description |
+|-------------|-----------|-------------|
+| user_id     | String    | Unique identifier for the user |
+| username    | String    | User's username |
+| password    | String    | User's hashed password |
 
 ## Vulnerabilities
 
-1. **SQL Injection**: The `fetch` method constructs the SQL query by directly concatenating the user input (`un`) into the query string. This is a severe security vulnerability that could allow malicious users to manipulate the query and potentially access or modify unauthorized data.
+1. SQL Injection: The `fetch` method constructs the SQL query by directly concatenating user input (`un`) into the query string. This is a severe security vulnerability that could allow malicious users to manipulate the query and potentially access or modify unauthorized data.
 
-2. **Insecure Error Handling**: The class prints stack traces and error messages to standard output and error streams. This could potentially expose sensitive information in production environments.
+2. Weak Secret Key Handling: The `token` and `assertAuth` methods convert the secret string directly to bytes without proper key derivation. This may result in weak keys if the secret is not sufficiently long or complex.
 
-3. **Weak Secret Key Handling**: The `token` and `assertAuth` methods convert the secret string directly to bytes for key generation. This approach might not be secure for all types of secrets and could lead to weak keys if the secret is not properly chosen.
+3. Exception Handling: The `assertAuth` method prints the stack trace of exceptions, which might leak sensitive information in production environments.
 
-4. **Lack of Input Validation**: There's no validation on the input parameters, which could lead to unexpected behavior or security issues.
+4. Plaintext Passwords: The `User` class stores passwords in the `hashedPassword` field, but there's no evidence of actual hashing. Storing plaintext passwords is a significant security risk.
 
-5. **Inefficient Resource Management**: The database connection in the `fetch` method is closed, but the `Statement` is not explicitly closed, which could lead to resource leaks.
+5. Inefficient Database Connection: The `fetch` method opens and closes a database connection for each query, which is inefficient for high-volume applications.
 
-6. **Insecure Password Storage**: While the class stores hashed passwords, there's no indication of salt usage or modern hashing algorithms, which are crucial for secure password storage.
+6. Lack of Prepared Statements: The use of string concatenation for SQL queries instead of prepared statements increases vulnerability to SQL injection and reduces query efficiency.
 
-7. **Overly Broad Exception Handling**: The `fetch` method catches all exceptions, which could mask specific errors and make debugging more difficult.
+7. Unlimited Token Validity: The generated JWT tokens don't include expiration claims, potentially allowing them to be valid indefinitely.
+
+8. Insecure Error Messages: Detailed error messages from database operations are printed to the console, potentially exposing sensitive information.
+
+These vulnerabilities should be addressed to improve the security and reliability of the application.

@@ -132,4 +132,68 @@ class UserTest {
 
         verify(mockConnection).close();
     }
+
+    @Test
+    void fetch_ShouldHandleSQLInjectionAttempt() throws Exception {
+        String maliciousUsername = "user' OR '1'='1";
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(false);
+
+        User result = User.fetch(maliciousUsername);
+
+        assertNull(result, "Fetch should return null for SQL injection attempt");
+        verify(mockStatement).executeQuery("select * from users where username = '" + maliciousUsername + "' limit 1");
+    }
+
+    @Test
+    void assertAuth_WithExpiredToken_ShouldThrowUnauthorized() {
+        // This test assumes that the token implementation includes an expiration time
+        String expiredToken = Jwts.builder()
+                .setSubject(testUser.username)
+                .setExpiration(new java.util.Date(System.currentTimeMillis() - 1000)) // Set expiration to 1 second ago
+                .signWith(Keys.hmacShaKeyFor(TEST_SECRET.getBytes()))
+                .compact();
+
+        assertThrows(Unauthorized.class, () -> User.assertAuth(TEST_SECRET, expiredToken), "assertAuth should throw Unauthorized for expired token");
+    }
+
+    @Test
+    void fetch_ShouldPrintQueryToConsole() throws Exception {
+        String username = "testUser";
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+
+        // Redirect System.out to capture printed messages
+        java.io.ByteArrayOutputStream outContent = new java.io.ByteArrayOutputStream();
+        System.setOut(new java.io.PrintStream(outContent));
+
+        User.fetch(username);
+
+        String expectedQuery = "select * from users where username = '" + username + "' limit 1";
+        assertTrue(outContent.toString().contains(expectedQuery), "Fetch should print the executed query to console");
+
+        // Reset System.out
+        System.setOut(System.out);
+    }
+
+    @Test
+    void fetch_ShouldPrintDatabaseOpenMessage() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+
+        // Redirect System.out to capture printed messages
+        java.io.ByteArrayOutputStream outContent = new java.io.ByteArrayOutputStream();
+        System.setOut(new java.io.PrintStream(outContent));
+
+        User.fetch("testUser");
+
+        assertTrue(outContent.toString().contains("Opened database successfully"), "Fetch should print 'Opened database successfully' message");
+
+        // Reset System.out
+        System.setOut(System.out);
+    }
 }
