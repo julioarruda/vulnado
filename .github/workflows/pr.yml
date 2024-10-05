@@ -156,7 +156,7 @@ jobs:
             FILE_URL="http://localhost:5052${uri}"
             FILE_CONTENT=$(curl --location $FILE_URL)
             CLASS_NAME=$(basename "${uri}" .java)
-            TEST_FILE="wiki/src/test/java/com/scalesec/vulnado/${CLASS_NAME}"
+            TEST_FILE="wiki/src/java/com/scalesec/vulnado/${CLASS_NAME}"
             echo "$FILE_CONTENT" > $TEST_FILE
           done
           
