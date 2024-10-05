@@ -1,0 +1,184 @@
+name: PR Tester
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  repository-projects: write
+
+jobs:
+  generate_tests:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+          
+      - name: Checkout the branch
+        run: |
+          BRANCH_NAME=${{ github.event.pull_request.head.ref }}
+          git fetch origin $BRANCH_NAME:$BRANCH_NAME
+          git checkout $BRANCH_NAME
+
+      - name: Identify Changed Classes
+        id: changes
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          REPO=${{ github.repository }}
+          CHANGED_FILES=$(curl -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
+                            -H "Accept: application/vnd.github.v3+json" \
+                            https://api.github.com/repos/${REPO}/pulls/${PR_NUMBER}/files)
+          echo "Changed files response: $CHANGED_FILES"
+          CHANGED_FILES=$(echo "$CHANGED_FILES" | jq -r '.[].filename')
+          echo "Changed files: $CHANGED_FILES" 
+          echo "changed_files<<EOF" >> $GITHUB_ENV
+          echo "$CHANGED_FILES" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Filter Changed Java Classes
+        id: filter_java
+        run: |
+          JAVA_FILES=$(echo "${{ env.changed_files }}" | grep 'src/main/java/.*\.java')
+          echo "Java files: $JAVA_FILES"
+          echo "java_files<<EOF" >> $GITHUB_ENV
+          echo "$JAVA_FILES" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Prepare and Send to API
+        id: send_api
+        run: |
+          for FILE in ${{ env.java_files }}; do
+            CLASS_NAME=$(basename "$FILE" .java)
+            TEST_FILE="src/test/java/com/scalesec/vulnado/${CLASS_NAME}Tests.java"
+            FILES="--form files=@$FILE"
+            if [ -f "$TEST_FILE" ]; then
+              FILES="$FILES --form ExistingTests=@$TEST_FILE"
+            fi
+            RESPONSE=$(curl --location 'http://localhost:5052/ai/test' \
+              --form "RunName=GenerateTests" \
+              $FILES \
+              --form "jobName=DemoTestCreator" \
+              --form "SearchPattern=*.java" \
+              --form "TargetExtension=java" \
+              --form "PromptId=TestCreator__CreateUnitTests_V1" \
+              --form "SourceCodeLanguage=Java" \
+              --form "TestType=Unit" \
+              --form "TestingFrameworks=MSTEST,MOQ" \
+              --form "Llm=AWS_CLAUDE" \
+              --form "AdditionalInstructions=Generate only the source code, without any extra information")
+            echo "API Response: $RESPONSE"
+            JOB_ID=$(echo $RESPONSE)
+            echo "job_id=$JOB_ID" >> $GITHUB_ENV
+          done
+
+      - name: Monitor Job Status
+        id: monitor_status
+        run: |
+          JOB_ID=${{ env.job_id }}
+          STATUS="Pending"
+          while [[ "$STATUS" != "Completed" ]]; do
+            RESPONSE=$(curl --location "http://localhost:5052/ai/jobs/$JOB_ID/status")
+            STATUS=$(echo $RESPONSE | jq -r '.status')
+            echo "Current status: $STATUS"
+            sleep 10
+          done
+          echo "Final status: $STATUS"
+          OUTPUT_URIS=$(echo $RESPONSE | jq -r '.results[].output[].uri')
+          echo "job_response=$RESPONSE" >> $GITHUB_ENV
+          echo "output_uris=$OUTPUT_URIS" >> $GITHUB_ENV
+
+      - name: Save Generated Tests
+        run: |
+          OUTPUT_URIS=${{ env.output_uris }}
+          for uri in $OUTPUT_URIS; do
+            FILE_URL="http://localhost:5052${uri}"
+            FILE_CONTENT=$(curl --location $FILE_URL)
+            CLASS_NAME=$(basename "${uri}" .java)
+            TEST_FILE="src/test/java/com/scalesec/vulnado/${CLASS_NAME}Tests.java"
+            echo "$FILE_CONTENT" > $TEST_FILE
+          done
+      - name: Add Comment to Issue
+        run: |
+          COMMENT="Unit Tests generated and included in branch"
+          ISSUE_NUMBER=${{ github.event.pull_request.number }}
+          REPO=${{ github.repository }}
+          curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+               -H "Accept: application/vnd.github.v3+json" \
+               -d "{\"body\": \"${COMMENT}\"}" \
+               https://api.github.com/repos/$REPO/issues/$ISSUE_NUMBER/comments
+
+               
+      - name: Prepare and Send to API
+        id: send_api2
+        run: |
+          for FILE in ${{ env.java_files }}; do
+            CLASS_NAME=$(basename "$FILE" .java)
+            FILES="--form files=@$FILE"
+            RESPONSE=$(curl --location 'http://localhost:5052/ai/document' \
+              --form "RunName=GenerateDocPR" \
+              $FILES \
+              --form "jobName=DemoDocCreator" \
+              --form "DocumentationFormat=markdown" \
+              --form "DiagramFormat=Mermaid" \
+              --form "SourceCodeLanguage=Java" \
+              --form "DocumentationAudience=Developer" \
+              --form "PromptId=DocCreator__DocumentCode_V3" \
+              --form "TargetExtension=md" \
+              --form "Llm=GPT_4_128k" \
+              --form "AdditionalInstructions=Generate all answers in english and If the code have vulnerabilities, describe all in a new # vulnerabilities section")           
+            echo "API Response: $RESPONSE"
+            JOB_ID=$(echo $RESPONSE)
+            echo "job_id=$JOB_ID" >> $GITHUB_ENV
+          done
+
+      - name: Monitor Job Status
+        id: monitor_status2
+        run: |
+          JOB_ID=${{ env.job_id }}
+          STATUS="Pending"
+          while [[ "$STATUS" != "Completed" ]]; do
+            RESPONSE=$(curl --location "http://localhost:5052/ai/jobs/$JOB_ID/status")
+            STATUS=$(echo $RESPONSE | jq -r '.status')
+            echo "Current status: $STATUS"
+            sleep 10
+          done
+          echo "Final status: $STATUS"
+          OUTPUT_URIS=$(echo $RESPONSE | jq -r '.results[].output[].uri')
+          echo "job_response=$RESPONSE" >> $GITHUB_ENV
+          echo "output_uris=$OUTPUT_URIS" >> $GITHUB_ENV
+
+      - name: Save Generated Docs
+        run: |
+          OUTPUT_URIS=${{ env.output_uris }}
+          for uri in $OUTPUT_URIS; do
+            FILE_URL="http://localhost:5052${uri}"
+            FILE_CONTENT=$(curl --location $FILE_URL)
+            CLASS_NAME=$(basename "${uri}" .java)
+            TEST_FILE="wiki/src/test/java/com/scalesec/vulnado/${CLASS_NAME}"
+            echo "$FILE_CONTENT" > $TEST_FILE
+          done
+          
+      - name: Add Comment to Issue
+        run: |
+          COMMENT="Documents generated and included in the branch"
+          ISSUE_NUMBER=${{ github.event.pull_request.number }}
+          REPO=${{ github.repository }}
+          curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+               -H "Accept: application/vnd.github.v3+json" \
+               -d "{\"body\": \"${COMMENT}\"}" \
+               https://api.github.com/repos/$REPO/issues/$ISSUE_NUMBER/comments
+
+               
+      - name: Commit and Push Tests
+        run: |
+          git config --global user.name 'gft-ai-impact[bot]'
+          git config --global user.email 'ai-impact[bot]@gft.com'
+          git add .
+          git commit -m "Add generated unit tests"
+          git push --set-upstream origin ${{ github.event.pull_request.head.ref }}
+    
+      - name: Run GFT AI Impact
+        run: |
+          gft codereview --config_path /app/gh-config.yml --pullnumber ${{ github.event.pull_request.number }}
