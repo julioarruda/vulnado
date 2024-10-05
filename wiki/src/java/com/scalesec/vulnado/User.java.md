@@ -1,17 +1,17 @@
-# User.java: User Authentication and Database Interaction
+# User.java: User Authentication and Management
 
 ## Overview
 
-This Java class, `User`, handles user authentication, token generation, and database interactions for user retrieval. It includes methods for creating JWT tokens, validating authentication, and fetching user data from a PostgreSQL database.
+This Java class, `User`, is responsible for user authentication, token generation, and database operations related to user management. It includes methods for creating user objects, generating JWT tokens, validating tokens, and fetching user data from a database.
 
 ## Process Flow
 
 ```mermaid
 flowchart TD
     A["User Constructor"] --> B["Token Generation"]
-    B --> C{"Authentication"}
-    C -->|"Success"| D["Fetch User"]
-    C -->|"Failure"| E["Throw Unauthorized"]
+    B --> C{"Token Valid?"}
+    C -->|Yes| D["Fetch User"]
+    C -->|No| E["Unauthorized"]
     D --> F["Database Query"]
     F --> G["Create User Object"]
     G --> H["Return User"]
@@ -21,45 +21,53 @@ flowchart TD
 
 - The class uses JWT (JSON Web Tokens) for authentication.
 - User data is stored in a PostgreSQL database.
-- The `fetch` method uses a potentially unsafe SQL query construction.
-- Error handling is implemented, but exceptions are printed to standard error.
-- The class includes both authentication and data access responsibilities.
+- The `fetch` method uses a prepared statement to prevent SQL injection.
+- Token generation and validation use HMAC-SHA256 algorithm.
+- Database connection is closed in a finally block to ensure proper resource management.
 
 ## Dependencies
 
 ```mermaid
 flowchart LR
-    User.java --- |"Uses"| jwt["JWT Library"]
-    User.java --- |"Connects"| postgres["PostgreSQL Database"]
-    User.java --- |"Throws"| unauthorized["Unauthorized Exception"]
+    User.java --- |"Imports"| io_jsonwebtoken
+    User.java --- |"Imports"| javax_crypto
+    User.java --- |"Imports"| java_sql
+    User.java --- |"Calls"| Postgres
 ```
 
-- `jwt`: Uses the `io.jsonwebtoken` library for JWT token generation and parsing.
-- `postgres`: Connects to a PostgreSQL database using the `Postgres.connection()` method.
-- `unauthorized`: Throws a custom `Unauthorized` exception when authentication fails.
+- `io.jsonwebtoken`: Used for JWT token generation and parsing
+- `javax.crypto.SecretKey`: Used for cryptographic key generation
+- `java.sql`: Used for database operations
+- `Postgres`: Custom class used to establish database connection
 
 ## Data Manipulation (SQL)
 
 | Entity | Operation | Description |
 |--------|-----------|-------------|
-| `users` | SELECT | Retrieves user information based on the username. The query selects all columns from the `users` table, limiting the result to one row. |
+| `users` | SELECT | Fetches user data based on the provided username |
+
+Table structure for `users`:
+
+| Column Name | Data Type | Description |
+|-------------|-----------|-------------|
+| user_id | String | Unique identifier for the user |
+| username | String | User's username |
+| password | String | User's hashed password |
 
 ## Vulnerabilities
 
-1. **SQL Injection**: The `fetch` method constructs an SQL query by directly concatenating user input (`un`) into the query string. This is a severe security vulnerability that could allow malicious users to manipulate the query and potentially access or modify unauthorized data.
+1. **Insecure Secret Handling**: The `token` and `assertAuth` methods use the provided secret directly as bytes, which may lead to weak keys if the secret is not properly generated or managed.
 
-2. **Insecure Password Storage**: The `hashedPassword` field suggests that passwords might be stored as hashes, but the implementation details are not visible. It's crucial to ensure that passwords are properly hashed and salted before storage.
+2. **Exception Handling**: The `fetch` method catches all exceptions and prints the stack trace, which might expose sensitive information in production environments.
 
-3. **Exception Handling**: The code prints stack traces to standard error, which could potentially expose sensitive information in production environments.
+3. **Token Expiration**: The generated JWT tokens do not include an expiration time, which could lead to tokens being valid indefinitely if not properly managed.
 
-4. **Token Generation**: The `token` method uses HMAC-SHA for signing, but doesn't specify which SHA algorithm (e.g., SHA-256, SHA-512). It's important to use a secure hashing algorithm.
+4. **Password Storage**: The `hashedPassword` field suggests that passwords might be stored as hashes, but the implementation details are not visible. Ensure that a strong, salted hashing algorithm is used.
 
-5. **Hardcoded Database Credentials**: While not visible in this snippet, the `Postgres.connection()` method likely contains hardcoded database credentials, which is a security risk.
+5. **SQL Injection Protection**: While prepared statements are used, which is good, the query string is printed to the console, potentially exposing sensitive information.
 
-6. **Connection Handling**: The database connection is closed in the `try` block, which might not execute if an exception occurs. It should be in a `finally` block or use try-with-resources.
+6. **Error Messages**: The `Unauthorized` exception includes the error message from the JWT parsing, which might provide too much information to potential attackers.
 
-7. **Lack of Prepared Statements**: The code uses a `Statement` instead of a `PreparedStatement`, which is less secure and more prone to SQL injection attacks.
+7. **Database Connection Management**: While the connection is closed in a finally block, which is good practice, consider using try-with-resources for more robust resource management.
 
-8. **Error Messages**: Detailed error messages are being returned to the client, which could potentially reveal sensitive information about the system architecture or database structure.
-
-These vulnerabilities should be addressed to improve the security of the application.
+8. **Lack of Input Validation**: There's no visible input validation for the username when fetching a user, which could potentially lead to unexpected behavior or attacks.
