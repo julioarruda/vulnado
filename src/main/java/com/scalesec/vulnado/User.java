@@ -1,13 +1,16 @@
 package com.scalesec.vulnado;
 
 import java.sql.Connection;
-import java.sql.Statement;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import javax.crypto.SecretKey;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
+import org.mindrot.jbcrypt.BCrypt;
 
 public class User {
   public String id, username, hashedPassword;
@@ -31,22 +34,25 @@ public class User {
         .setSigningKey(key)
         .parseClaimsJws(token);
     } catch(Exception e) {
+      System.err.println("Stack trace:");
       e.printStackTrace();
-      throw new Unauthorized(e.getMessage());
+      throw new Unauthorized("Invalid token: " + e.getMessage());
     }
   }
 
   public static User fetch(String un) {
-    Statement stmt = null;
+    if (!isValidUsername(un)) {
+      throw new BadRequest("Invalid username");
+    }
+
+    PreparedStatement stmt = null;
     User user = null;
     try {
       Connection cxn = Postgres.connection();
-      stmt = cxn.createStatement();
-      System.out.println("Opened database successfully");
-
-      String query = "select * from users where username = '" + un + "' limit 1";
-      System.out.println(query);
-      ResultSet rs = stmt.executeQuery(query);
+      String query = "select * from users where username = ? limit 1";
+      stmt = cxn.prepareStatement(query);
+      stmt.setString(1, un);
+      ResultSet rs = stmt.executeQuery();
       if (rs.next()) {
         String user_id = rs.getString("user_id");
         String username = rs.getString("username");
@@ -55,10 +61,16 @@ public class User {
       }
       cxn.close();
     } catch (Exception e) {
-      e.printStackTrace();
-      System.err.println(e.getClass().getName()+": "+e.getMessage());
+      System.err.println("Error fetching user: " + e.getMessage());
     } finally {
       return user;
     }
+  }
+
+  private static boolean isValidUsername(String username) {
+    String regex = "^[a-zA-Z0-9._-]{3,}$";
+    Pattern pattern = Pattern.compile(regex);
+    Matcher matcher = pattern.matcher(username);
+    return matcher.matches();
   }
 }
