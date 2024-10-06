@@ -34,14 +34,13 @@ public class Comment {
   }
 
   public static List<Comment> fetch_all() {
-    Statement stmt = null;
+    PreparedStatement pstmt = null;
     List<Comment> comments = new ArrayList();
     try {
       Connection cxn = Postgres.connection();
-      stmt = cxn.createStatement();
-
-      String query = "select * from comments;";
-      ResultSet rs = stmt.executeQuery(query);
+      String query = "select * from comments";
+      pstmt = cxn.prepareStatement(query);
+      ResultSet rs = pstmt.executeQuery();
       while (rs.next()) {
         String id = rs.getString("id");
         String username = rs.getString("username");
