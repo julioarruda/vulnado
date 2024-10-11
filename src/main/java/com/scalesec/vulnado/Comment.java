@@ -19,6 +19,10 @@ public class Comment {
   }
 
   public static Comment create(String username, String body){
+    if (username == null || username.trim().isEmpty() || body == null || body.trim().isEmpty()) {
+      throw new IllegalArgumentException("Username and body cannot be null or empty");
+    }
+
     long time = new Date().getTime();
     Timestamp timestamp = new Timestamp(time);
     Comment comment = new Comment(UUID.randomUUID().toString(), username, body, timestamp);
@@ -60,6 +64,10 @@ public class Comment {
   }
 
   public static Boolean delete(String id) {
+    if (id == null || id.trim().isEmpty()) {
+      throw new IllegalArgumentException("ID cannot be null or empty");
+    }
+
     try {
       String sql = "DELETE FROM comments where id = ?";
       Connection con = Postgres.connection();

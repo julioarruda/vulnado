@@ -17,6 +17,9 @@ public class LoginController {
   @CrossOrigin(origins = "*")
   @RequestMapping(value = "/login", method = RequestMethod.POST, produces = "application/json", consumes = "application/json")
   LoginResponse login(@RequestBody LoginRequest input) {
+    if (input.username == null || input.username.trim().isEmpty() || input.password == null || input.password.trim().isEmpty()) {
+      throw new BadRequest("Username and password cannot be null or empty");
+    }
     User user = User.fetch(input.username);
     if (Postgres.md5(input.password).equals(user.hashedPassword)) {
       return new LoginResponse(user.token(secret));
@@ -39,6 +42,13 @@ class LoginResponse implements Serializable {
 @ResponseStatus(HttpStatus.UNAUTHORIZED)
 class Unauthorized extends RuntimeException {
   public Unauthorized(String exception) {
+    super(exception);
+  }
+}
+
+@ResponseStatus(HttpStatus.BAD_REQUEST)
+class BadRequest extends RuntimeException {
+  public BadRequest(String exception) {
     super(exception);
   }
 }

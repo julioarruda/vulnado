@@ -23,12 +23,18 @@ public class CommentsController {
   @CrossOrigin(origins = "*")
   @RequestMapping(value = "/comments", method = RequestMethod.POST, produces = "application/json", consumes = "application/json")
   Comment createComment(@RequestHeader(value="x-auth-token") String token, @RequestBody CommentRequest input) {
+    if (input.username == null || input.username.trim().isEmpty() || input.body == null || input.body.trim().isEmpty()) {
+      throw new BadRequest("Username and body cannot be null or empty");
+    }
     return Comment.create(input.username, input.body);
   }
 
   @CrossOrigin(origins = "*")
   @RequestMapping(value = "/comments/{id}", method = RequestMethod.DELETE, produces = "application/json")
   Boolean deleteComment(@RequestHeader(value="x-auth-token") String token, @PathVariable("id") String id) {
+    if (id == null || id.trim().isEmpty()) {
+      throw new BadRequest("ID cannot be null or empty");
+    }
     return Comment.delete(id);
   }
 }

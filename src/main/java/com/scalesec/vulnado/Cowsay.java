@@ -5,6 +5,10 @@ import java.io.InputStreamReader;
 
 public class Cowsay {
   public static String run(String input) {
+    if (input == null || input.trim().isEmpty() || input.contains(";") || input.contains("&") || input.contains("|")) {
+      throw new IllegalArgumentException("Invalid input");
+    }
+
     ProcessBuilder processBuilder = new ProcessBuilder();
     String cmd = "/usr/games/cowsay '" + input + "'";
     System.out.println(cmd);

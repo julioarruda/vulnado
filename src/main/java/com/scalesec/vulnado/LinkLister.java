@@ -12,6 +12,10 @@ import java.net.*;
 
 public class LinkLister {
   public static List<String> getLinks(String url) throws IOException {
+    if (url == null || url.trim().isEmpty()) {
+      throw new IllegalArgumentException("URL cannot be null or empty");
+    }
+
     List<String> result = new ArrayList<String>();
     Document doc = Jsoup.connect(url).get();
     Elements links = doc.select("a");
@@ -22,6 +26,10 @@ public class LinkLister {
   }
 
   public static List<String> getLinksV2(String url) throws BadRequest {
+    if (url == null || url.trim().isEmpty()) {
+      throw new IllegalArgumentException("URL cannot be null or empty");
+    }
+
     try {
       URL aUrl= new URL(url);
       String host = aUrl.getHost();
