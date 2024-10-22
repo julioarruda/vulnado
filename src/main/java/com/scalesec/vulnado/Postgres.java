@@ -1,4 +1,6 @@
 package com.scalesec.vulnado;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -10,10 +12,11 @@ import java.sql.Statement;
 import java.util.UUID;
 
 public class Postgres {
+    private Postgres() { throw new IllegalStateException("Utility class"); }
+    private static final Logger LOGGER = Logger.getLogger(Postgres.class.getName());
 
     public static Connection connection() {
         try {
-            Class.forName("org.postgresql.Driver");
             String url = new StringBuilder()
                     .append("jdbc:postgresql://")
                     .append(System.getenv("PGHOST"))
@@ -22,15 +25,15 @@ public class Postgres {
             return DriverManager.getConnection(url,
                     System.getenv("PGUSER"), System.getenv("PGPASSWORD"));
         } catch (Exception e) {
-            e.printStackTrace();
-            System.err.println(e.getClass().getName()+": "+e.getMessage());
+            LOGGER.log(Level.SEVERE, e.getMessage(), e);
+            LOGGER.log(Level.SEVERE, e.getMessage(), e);
             System.exit(1);
         }
         return null;
     }
     public static void setup(){
         try {
-            System.out.println("Setting up Database...");
+            LOGGER.log(Level.INFO, "Setting up Database...");
             Connection c = connection();
             Statement stmt = c.createStatement();
 
@@ -53,7 +56,7 @@ public class Postgres {
             insertComment("alice", "OMG so cute!");
             c.close();
         } catch (Exception e) {
-            System.out.println(e);
+            LOGGER.log(Level.SEVERE, e.getMessage(), e);
             System.exit(1);
         }
     }
