@@ -42,12 +42,12 @@ jobs:
             --form 'SastIssueTypes[]="VULNERABILITY"' \
             --form 'SastIssueTypes[]="CODE_SMELL"' \
             --form 'Vcs[0][Name]="Codefixer"' \
-            --form 'BranchName="pr-fix-${{ github.event.pull_request.number }}"' \
-            --form 'BaseBranch="${{ github.event.pull_request.base.ref }}"' \
+            --form 'BranchName="code-fixer"' \
+            --form 'BaseBranch="main"' \
             --form 'RepoName="${{ github.repository }}"' \
             --form 'CreatePullRequestPerFile="true"')
           echo "API Response: $RESPONSE"
-          JOB_ID=$(echo $RESPONSE | jq -r '.job_id')
+          JOB_ID=$(echo $RESPONSE)
           echo "job_id=$JOB_ID" >> $GITHUB_ENV
 
       - name: Monitor Code Fix Job Status
