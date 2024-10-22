@@ -1,17 +1,18 @@
 package com.scalesec.vulnado;
 
 import java.sql.Connection;
+import java.util.logging.Logger;
 import java.sql.Statement;
 import java.sql.ResultSet;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.JwtParser;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import javax.crypto.SecretKey;
 
 public class User {
-  public String id, username, hashedPassword;
+  private String id; 
+  private String username;
 
+  private String hashedPassword;
   public User(String id, String username, String hashedPassword) {
     this.id = id;
     this.username = username;
@@ -20,7 +21,7 @@ public class User {
 
   public String token(String secret) {
     SecretKey key = Keys.hmacShaKeyFor(secret.getBytes());
-    String jws = Jwts.builder().setSubject(this.username).signWith(key).compact();
+    return Jwts.builder().setSubject(this.username).signWith(key).compact();
     return jws;
   }
 
@@ -31,7 +32,6 @@ public class User {
         .setSigningKey(key)
         .parseClaimsJws(token);
     } catch(Exception e) {
-      e.printStackTrace();
       throw new Unauthorized(e.getMessage());
     }
   }
@@ -43,20 +43,20 @@ public class User {
       Connection cxn = Postgres.connection();
       stmt = cxn.createStatement();
       System.out.println("Opened database successfully");
-
+      Logger logger = Logger.getLogger(User.class.getName());
+      logger.info("Opened database successfully");
       String query = "select * from users where username = '" + un + "' limit 1";
       System.out.println(query);
-      ResultSet rs = stmt.executeQuery(query);
-      if (rs.next()) {
+      logger.info(query);
+      String query = "select * from users where username = ? limit 1";
         String user_id = rs.getString("user_id");
-        String username = rs.getString("username");
+        String userId = rs.getString("user_id");
         String password = rs.getString("password");
         user = new User(user_id, username, password);
       }
       cxn.close();
     } catch (Exception e) {
-      e.printStackTrace();
-      System.err.println(e.getClass().getName()+": "+e.getMessage());
+      logger.severe(e.getClass().getName() + ": " + e.getMessage());
     } finally {
       return user;
     }
