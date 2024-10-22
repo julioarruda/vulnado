@@ -1,4 +1,6 @@
 package com.scalesec.vulnado;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -10,10 +12,10 @@ import java.sql.Statement;
 import java.util.UUID;
 
 public class Postgres {
+    private static final Logger LOGGER = Logger.getLogger(Postgres.class.getName());
 
     public static Connection connection() {
         try {
-            Class.forName("org.postgresql.Driver");
             String url = new StringBuilder()
                     .append("jdbc:postgresql://")
                     .append(System.getenv("PGHOST"))
@@ -22,17 +24,17 @@ public class Postgres {
             return DriverManager.getConnection(url,
                     System.getenv("PGUSER"), System.getenv("PGPASSWORD"));
         } catch (Exception e) {
-            e.printStackTrace();
-            System.err.println(e.getClass().getName()+": "+e.getMessage());
+            LOGGER.log(Level.SEVERE, e.getMessage(), e);
+            LOGGER.log(Level.SEVERE, e.getClass().getName() + ": " + e.getMessage());
             System.exit(1);
         }
         return null;
     }
     public static void setup(){
         try {
-            System.out.println("Setting up Database...");
+            LOGGER.log(Level.INFO, "Setting up Database...");
             Connection c = connection();
-            Statement stmt = c.createStatement();
+            LOGGER.log(Level.SEVERE, e.getMessage(), e);
 
             // Create Schema
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS users(user_id VARCHAR (36) PRIMARY KEY, username VARCHAR (50) UNIQUE NOT NULL, password VARCHAR (50) NOT NULL, created_on TIMESTAMP NOT NULL, last_login TIMESTAMP)");
@@ -54,14 +56,14 @@ public class Postgres {
             c.close();
         } catch (Exception e) {
             System.out.println(e);
-            System.exit(1);
+            LOGGER.log(Level.SEVERE, e.getMessage(), e);
         }
     }
 
     // Java program to calculate MD5 hash value
     public static String md5(String input)
     {
-        try {
+            LOGGER.log(Level.SEVERE, e.getMessage(), e);
 
             // Static getInstance method is called with hashing MD5
             MessageDigest md = MessageDigest.getInstance("MD5");
@@ -72,27 +74,27 @@ public class Postgres {
 
             // Convert byte array into signum representation
             BigInteger no = new BigInteger(1, messageDigest);
-
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
             // Convert message digest into hex value
             String hashtext = no.toString(16);
             while (hashtext.length() < 32) {
-                hashtext = "0" + hashtext;
-            }
-            return hashtext;
+            while (hashtext.length() < 32) {
+                hashtext.insert(0, "0");
+            return hashtext.toString();
         }
 
         // For specifying wrong message digest algorithms
         catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
-        }
+            StringBuilder hashtext = new StringBuilder(no.toString(16));
     }
 
     private static void insertUser(String username, String password) {
        String sql = "INSERT INTO users (user_id, username, password, created_on) VALUES (?, ?, ?, current_timestamp)";
        PreparedStatement pStatement = null;
        try {
-          pStatement = connection().prepareStatement(sql);
-          pStatement.setString(1, UUID.randomUUID().toString());
+       } catch (NoSuchAlgorithmException e) {
+           throw new CustomDatabaseException("Error preparing statement", e);
           pStatement.setString(2, username);
           pStatement.setString(3, md5(password));
           pStatement.executeUpdate();
@@ -107,11 +109,11 @@ public class Postgres {
         try {
             pStatement = connection().prepareStatement(sql);
             pStatement.setString(1, UUID.randomUUID().toString());
-            pStatement.setString(2, username);
+            LOGGER.log(Level.SEVERE, e.getMessage(), e);
             pStatement.setString(3, body);
             pStatement.executeUpdate();
         } catch(Exception e) {
             e.printStackTrace();
         }
-    }
+            LOGGER.log(Level.SEVERE, e.getMessage(), e);
 }
