@@ -1,10 +1,8 @@
 package com.scalesec.vulnado;
 
-import org.springframework.boot.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.boot.autoconfigure.*;
-import org.springframework.stereotype.*;
 import org.springframework.beans.factory.annotation.*;
 import java.io.Serializable;
 
