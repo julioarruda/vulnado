@@ -1,0 +1,67 @@
+name: Code Fixer
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  repository-projects: write
+
+jobs:
+  run_code_fix:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare and Send for Code Fix
+        id: send_code_fix
+        run: |
+          RESPONSE=$(curl --location 'http://localhost:5052/ai/fix' \
+            --form 'RunName="AWS_CLAUDE"' \
+            --form 'SastName="Sonar_Cloud"' \
+            --form 'jobName="DemoCodeFixerGithub"' \
+            --form 'SourceCodeLanguage="Java"' \
+            --form 'PromptId="CodeFixer__FixCode_V3"' \
+            --form 'TargetExtension="java"' \
+            --form 'Llm="AWS_CLAUDE"' \
+            --form 'SearchPattern="*.java"' \
+            --form 'JobPreProcessors[]="VCS-CLONE-REPO"' \
+            --form 'JobPreProcessors[]="READ-CODE-CONVENTIONS"' \
+            --form 'JobPreProcessors[]="VCS-CHECKOUT-REPO"' \
+            --form 'ItemContentPostProcessors[]="WRITE-CONTENT"' \
+            --form 'ItemContentPostProcessors[]="COPY-CONTENT"' \
+            --form 'ItemContentPostProcessors[]="VCS-PULL-REQUEST-FILE-REPO"' \
+            --form 'JobPostProcessors[]="VCS-COMMIT-PUSH-REPO"' \
+            --form 'JobPostProcessors[]="VCS-PULL-REQUEST-REPO"' \
+            --form 'IssueSeverities[]="BLOCKER"' \
+            --form 'IssueSeverities[]="CRITICAL"' \
+            --form 'IssueSeverities[]="MAJOR"' \
+            --form 'SastIssueTypes[]="BUG"' \
+            --form 'SastIssueTypes[]="VULNERABILITY"' \
+            --form 'SastIssueTypes[]="CODE_SMELL"' \
+            --form 'Vcs[0][Name]="Codefixer"' \
+            --form 'BranchName="pr-fix-${{ github.event.pull_request.number }}"' \
+            --form 'BaseBranch="${{ github.event.pull_request.base.ref }}"' \
+            --form 'RepoName="${{ github.repository }}"' \
+            --form 'CreatePullRequestPerFile="true"')
+          echo "API Response: $RESPONSE"
+          JOB_ID=$(echo $RESPONSE | jq -r '.job_id')
+          echo "job_id=$JOB_ID" >> $GITHUB_ENV
+
+      - name: Monitor Code Fix Job Status
+        id: monitor_code_fix_status
+        run: |
+          JOB_ID=${{ env.job_id }}
+          STATUS="Pending"
+          while [[ "$STATUS" != "Completed" ]]; do
+            RESPONSE=$(curl --location "http://localhost:5052/ai/jobs/$JOB_ID/status")
+            STATUS=$(echo $RESPONSE | jq -r '.status')
+            echo "Current status: $STATUS"
+            sleep 10
+          done
+          echo "Final status: $STATUS"
+          OUTPUT_URIS=$(echo $RESPONSE | jq -r '.results[].output[].uri')
+          echo "job_response=$RESPONSE" >> $GITHUB_ENV
+          echo "output_uris=$OUTPUT_URIS" >> $GITHUB_ENV
