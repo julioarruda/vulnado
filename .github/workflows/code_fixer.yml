@@ -43,7 +43,7 @@ jobs:
             --form 'SastIssueTypes[]="CODE_SMELL"' \
             --form 'Vcs[0][Name]="Codefixer"' \
             --form 'BranchName="code-fixer"' \
-            --form 'BaseBranch="main"' \
+            --form 'BaseBranch="master"' \
             --form 'RepoName="${{ github.repository }}"' \
             --form 'CreatePullRequestPerFile="true"')
           echo "API Response: $RESPONSE"
