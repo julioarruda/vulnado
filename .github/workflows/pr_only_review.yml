@@ -23,7 +23,7 @@ jobs:
             --form 'RunName="CodeReview"' \
             --form 'jobName="DemoCodeReviewerGithub"' \
             --form 'PromptId="CodeReviewer__CodeReviewer_V1_Conventions"' \
-            --form 'Llm="AWS_CLAUDE"' \
+            --form 'Llm="${{ vars.LLM }}"' \
             --form 'PullRequestId="${{ github.event.pull_request.number }}"' \
             --form 'RepoName="julioarruda/vulnado"' \
             --form 'Conventions="Header,Description,Summary,Recomendations,VulnExplanation"')

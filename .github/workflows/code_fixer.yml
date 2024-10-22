@@ -19,13 +19,13 @@ jobs:
         id: send_code_fix
         run: |
           RESPONSE=$(curl --location 'http://localhost:5052/ai/fix' \
-            --form 'RunName="AWS_CLAUDE"' \
+            --form 'RunName="code_reviewer"' \
             --form 'SastName="Sonar_Cloud"' \
             --form 'jobName="DemoCodeFixerGithub"' \
             --form 'SourceCodeLanguage="Java"' \
             --form 'PromptId="CodeFixer__FixCode_V3"' \
             --form 'TargetExtension="java"' \
-            --form 'Llm="AWS_CLAUDE"' \
+            --form 'Llm="${{ vars.LLM }}"' \
             --form 'SearchPattern="*.java"' \
             --form 'JobPreProcessors[]="VCS-CLONE-REPO"' \
             --form 'JobPreProcessors[]="READ-CODE-CONVENTIONS"' \
@@ -63,5 +63,3 @@ jobs:
           done
           echo "Final status: $STATUS"
           OUTPUT_URIS=$(echo $RESPONSE | jq -r '.results[].output[].uri')
-          echo "job_response=$RESPONSE" >> $GITHUB_ENV
-          echo "output_uris=$OUTPUT_URIS" >> $GITHUB_ENV

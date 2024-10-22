@@ -66,7 +66,7 @@ jobs:
               --form "SourceCodeLanguage=Java" \
               --form "TestType=Unit" \
               --form "TestingFrameworks=MSTEST,MOQ" \
-              --form "Llm=AWS_CLAUDE" \
+              --form "Llm=${{ vars.LLM }}" \
               --form "AdditionalInstructions=Generate only the source code, without any extra information")
             echo "API Response: $RESPONSE"
             JOB_ID=$(echo $RESPONSE)
@@ -126,7 +126,7 @@ jobs:
               --form "DocumentationAudience=Developer" \
               --form "PromptId=DocCreator__DocumentCode_V3" \
               --form "TargetExtension=md" \
-              --form "Llm=AWS_CLAUDE" \
+              --form "Llm=${{ vars.LLM }}" \
               --form "AdditionalInstructions=Generate all answers in english and If the code have vulnerabilities, describe all in a new # vulnerabilities section")           
             echo "API Response: $RESPONSE"
             JOB_ID=$(echo $RESPONSE)
@@ -186,7 +186,7 @@ jobs:
             --form 'RunName="CodeReview"' \
             --form 'jobName="DemoCodeReviewerGithub"' \
             --form 'PromptId="CodeReviewer__CodeReviewer_V1_Conventions"' \
-            --form 'Llm="AWS_CLAUDE"' \
+            --form 'Llm="${{ vars.LLM }}"' \
             --form 'PullRequestId="${{ github.event.pull_request.number }}"' \
             --form 'RepoName="julioarruda/vulnado"' \
             --form 'Conventions="Header,Description,Summary,Recomendations,VulnExplanation"')
