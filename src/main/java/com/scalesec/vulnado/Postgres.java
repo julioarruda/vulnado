@@ -1,4 +1,6 @@
 package com.scalesec.vulnado;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -10,10 +12,11 @@ import java.sql.Statement;
 import java.util.UUID;
 
 public class Postgres {
+    private Postgres() { throw new IllegalStateException("Utility class"); }
+    private static final Logger LOGGER = Logger.getLogger(Postgres.class.getName());
 
     public static Connection connection() {
         try {
-            Class.forName("org.postgresql.Driver");
             String url = new StringBuilder()
                     .append("jdbc:postgresql://")
                     .append(System.getenv("PGHOST"))
@@ -23,7 +26,7 @@ public class Postgres {
                     System.getenv("PGUSER"), System.getenv("PGPASSWORD"));
         } catch (Exception e) {
             e.printStackTrace();
-            System.err.println(e.getClass().getName()+": "+e.getMessage());
+            LOGGER.log(Level.SEVERE, e.getClass().getName() + ": " + e.getMessage(), e);
             System.exit(1);
         }
         return null;
@@ -32,7 +35,7 @@ public class Postgres {
         try {
             System.out.println("Setting up Database...");
             Connection c = connection();
-            Statement stmt = c.createStatement();
+            LOGGER.log(Level.INFO, "Setting up Database...");
 
             // Create Schema
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS users(user_id VARCHAR (36) PRIMARY KEY, username VARCHAR (50) UNIQUE NOT NULL, password VARCHAR (50) NOT NULL, created_on TIMESTAMP NOT NULL, last_login TIMESTAMP)");
@@ -54,7 +57,7 @@ public class Postgres {
             c.close();
         } catch (Exception e) {
             System.out.println(e);
-            System.exit(1);
+            LOGGER.log(Level.SEVERE, e.getMessage(), e);
         }
     }
 
