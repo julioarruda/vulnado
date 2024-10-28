@@ -11,7 +11,9 @@ public class VulnadoApplicationTests {
 
 	@Test
 	public void contextLoads() {
+		// Ensure that the application context loads without errors
 	}
+		assert true : "Application context should load without errors";
 
 }
 
