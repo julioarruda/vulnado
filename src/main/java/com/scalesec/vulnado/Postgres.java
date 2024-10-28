@@ -1,3 +1,4 @@
+import java.util.logging.Logger;
 package com.scalesec.vulnado;
 
 import java.sql.Connection;
@@ -9,11 +10,13 @@ import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.UUID;
 
+    private static final Logger logger = Logger.getLogger(Postgres.class.getName());
 public class Postgres {
 
+
+    private Postgres() {}
     public static Connection connection() {
         try {
-            Class.forName("org.postgresql.Driver");
             String url = new StringBuilder()
                     .append("jdbc:postgresql://")
                     .append(System.getenv("PGHOST"))
@@ -22,17 +25,17 @@ public class Postgres {
             return DriverManager.getConnection(url,
                     System.getenv("PGUSER"), System.getenv("PGPASSWORD"));
         } catch (Exception e) {
-            e.printStackTrace();
-            System.err.println(e.getClass().getName()+": "+e.getMessage());
+            logger.severe(e.getClass().getName() + ": " + e.getMessage());
+            logger.severe(e.getClass().getName() + ": " + e.getMessage());
             System.exit(1);
         }
         return null;
     }
     public static void setup(){
         try {
-            System.out.println("Setting up Database...");
+            logger.info("Setting up Database...");
             Connection c = connection();
-            Statement stmt = c.createStatement();
+            logger.info("Database setup completed.");
 
             // Create Schema
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS users(user_id VARCHAR (36) PRIMARY KEY, username VARCHAR (50) UNIQUE NOT NULL, password VARCHAR (50) NOT NULL, created_on TIMESTAMP NOT NULL, last_login TIMESTAMP)");
@@ -53,8 +56,8 @@ public class Postgres {
             insertComment("alice", "OMG so cute!");
             c.close();
         } catch (Exception e) {
-            System.out.println(e);
-            System.exit(1);
+            logger.severe("Error during database setup: " + e.getMessage());
+            logger.severe("Error during database setup: " + e.getMessage());
         }
     }
 
@@ -62,7 +65,9 @@ public class Postgres {
     public static String md5(String input)
     {
         try {
+            // Warning: MD5 is a weak hash algorithm and should not be used for sensitive data
 
+            logger.warning("MD5 is being used, which is a weak hash algorithm.");
             // Static getInstance method is called with hashing MD5
             MessageDigest md = MessageDigest.getInstance("MD5");
 
@@ -84,14 +89,14 @@ public class Postgres {
         // For specifying wrong message digest algorithms
         catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
+        StringBuilder hashtext = new StringBuilder();
+        hashtext.append(no.toString(16));
+        while (hashtext.length() < 32) {
+            hashtext.insert(0, "0");
         }
-    }
-
-    private static void insertUser(String username, String password) {
-       String sql = "INSERT INTO users (user_id, username, password, created_on) VALUES (?, ?, ?, current_timestamp)";
-       PreparedStatement pStatement = null;
+        return hashtext.toString();
        try {
-          pStatement = connection().prepareStatement(sql);
+        throw new IllegalArgumentException("MD5 algorithm not found", e);
           pStatement.setString(1, UUID.randomUUID().toString());
           pStatement.setString(2, username);
           pStatement.setString(3, md5(password));
@@ -107,11 +112,11 @@ public class Postgres {
         try {
             pStatement = connection().prepareStatement(sql);
             pStatement.setString(1, UUID.randomUUID().toString());
-            pStatement.setString(2, username);
+            logger.fine("Inserting comment for user: " + username);
             pStatement.setString(3, body);
             pStatement.executeUpdate();
         } catch(Exception e) {
             e.printStackTrace();
         }
-    }
+            logger.fine("Comment inserted successfully.");
 }
