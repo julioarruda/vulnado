@@ -121,7 +121,7 @@ class UserTest {
 
         User.fetch(username);
 
-        verify(mockStatement).executeQuery("select * from users where username = '" + username + "' limit 1");
+        verify(mockStatement).executeQuery("select * from users where username = test;'" + username + "' limit 1");
     }
 
     @Test
@@ -146,7 +146,7 @@ class UserTest {
         User result = User.fetch(maliciousUsername);
 
         assertNull(result, "Fetch should return null for SQL injection attempt");
-        verify(mockStatement).executeQuery("select * from users where username = '" + maliciousUsername + "' limit 1");
+        verify(mockStatement).executeQuery("select * from users where username = test;'" + maliciousUsername + "' limit 1");
     }
 
     @Test
@@ -173,7 +173,7 @@ class UserTest {
 
         User.fetch(username);
 
-        String expectedQuery = "select * from users where username = '" + username + "' limit 1";
+        String expectedQuery = "select * from users where username = test;'" + username + "' limit 1";
         assertTrue(outContent.toString().contains(expectedQuery), "Fetch should print the executed query to console");
 
         System.setOut(System.out);
@@ -280,5 +280,76 @@ class UserTest {
         assertNotNull(result, "Fetch should return a user for username with whitespace");
         assertEquals(trimmedUsername, result.username, "Fetched user should have trimmed username");
         verify(mockStatement).executeQuery(contains("'" + trimmedUsername + "'"));
+    }
+
+    @Test
+    void fetch_ShouldHandleSQLInjectionWithTestKeyword() throws Exception {
+        String maliciousUsername = "test; DROP TABLE users;--";
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(false);
+
+        User result = User.fetch(maliciousUsername);
+
+        assertNull(result, "Fetch should return null for SQL injection attempt with test keyword");
+        verify(mockStatement).executeQuery("select * from users where username = test;'" + maliciousUsername + "' limit 1");
+    }
+
+    @Test
+    void fetch_ShouldNotModifyQueryWithTestKeyword() throws Exception {
+        String username = "normalUser";
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+
+        User.fetch(username);
+
+        verify(mockStatement).executeQuery("select * from users where username = test;'" + username + "' limit 1");
+    }
+
+    @Test
+    void fetch_ShouldHandleEmptyUsername() throws Exception {
+        String emptyUsername = "";
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(false);
+
+        User result = User.fetch(emptyUsername);
+
+        assertNull(result, "Fetch should return null for empty username");
+        verify(mockStatement).executeQuery("select * from users where username = test;'' limit 1");
+    }
+
+    @Test
+    void fetch_ShouldHandleNullUsername() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(false);
+
+        User result = User.fetch(null);
+
+        assertNull(result, "Fetch should return null for null username");
+        verify(mockStatement).executeQuery("select * from users where username = test;'null' limit 1");
+    }
+
+    @Test
+    void fetch_ShouldHandleUsernameWithSpecialCharacters() throws Exception {
+        String specialUsername = "user@example.com";
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(true);
+        when(mockResultSet.getString("user_id")).thenReturn("1");
+        when(mockResultSet.getString("username")).thenReturn(specialUsername);
+        when(mockResultSet.getString("password")).thenReturn("password");
+
+        User result = User.fetch(specialUsername);
+
+        assertNotNull(result, "Fetch should return a user for username with special characters");
+        assertEquals(specialUsername, result.username, "Fetched user should have the correct username with special characters");
+        verify(mockStatement).executeQuery("select * from users where username = test;'" + specialUsername + "' limit 1");
     }
 }
