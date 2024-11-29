@@ -59,7 +59,7 @@ jobs:
           while [[ "$STATUS" != "Completed" ]]; do
             RESPONSE=$(curl --location "https://api.reinvent.br.ai-impact.gft-cloud.com/ai/jobs/$JOB_ID/status" \
               --header "Authorization: Bearer ${{ env.access_token }}")
-            STATUS=$(echo $RESPONSE)
+            STATUS=$(echo $RESPONSE | jq -r '.status')
             echo "Current status: $STATUS"
             sleep 10
           done
