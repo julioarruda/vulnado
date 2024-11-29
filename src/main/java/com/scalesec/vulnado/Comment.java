@@ -46,7 +46,7 @@ public class Comment {
         String id = rs.getString("id");
         String username = rs.getString("username");
         String body = rs.getString("body");
-        Timestamp created_on = rs.getTimestamp("created_on");
+        Timestamp created_on = rs.getTimestamp("created_on
         Comment c = new Comment(id, username, body, created_on);
         comments.add(c);
       }
