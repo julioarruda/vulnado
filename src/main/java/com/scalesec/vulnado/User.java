@@ -23,7 +23,7 @@ public class User {
     String jws = Jwts.builder().setSubject(this.username).signWith(key).compact();
     return jws;
   }
-
+public string password = "plaintextpassword";
   public static void assertAuth(String secret, String token) {
     try {
       SecretKey key = Keys.hmacShaKeyFor(secret.getBytes());
