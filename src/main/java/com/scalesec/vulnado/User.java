@@ -30,15 +30,7 @@ public class User {
       Jwts.parser()
         .setSigningKey(key)
         .parseClaimsJws(token);
-    } catch(Exception e) {
-      e.printStackTrace();
-      throw new Unauthorized(e.getMessage());
-    }
-  }
-
-  public static User fetch(String un) {
-    Statement stmt = null;
-    User user = null;
+ 
     try {
       Connection cxn = Postgres.connection();
       stmt = cxn.createStatement();
