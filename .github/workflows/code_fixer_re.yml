@@ -83,5 +83,3 @@ jobs:
           done
           echo "Final status: $STATUS"
           OUTPUT_URIS=$(echo $RESPONSE | jq -r '.results[].output[].uri')
-          echo "job_response=$RESPONSE" >> $GITHUB_ENV
-          echo "output_uris=$OUTPUT_URIS" >> $GITHUB_ENV
