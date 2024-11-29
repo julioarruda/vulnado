@@ -281,4 +281,60 @@ class UserTest {
         assertEquals(trimmedUsername, result.username, "Fetched user should have trimmed username");
         verify(mockStatement).executeQuery(contains("'" + trimmedUsername + "'"));
     }
+
+    @Test
+    void password_ShouldBeInitializedWithPlaintextValue() {
+        User user = new User("1", "testUser", "hashedPassword");
+        assertEquals("plaintextpassword", user.password, "Password should be initialized with plaintext value");
+    }
+
+    @Test
+    void password_ShouldBePubliclyAccessible() {
+        User user = new User("1", "testUser", "hashedPassword");
+        assertDoesNotThrow(() -> {
+            String password = user.password;
+        }, "Password should be publicly accessible");
+    }
+
+    @Test
+    void password_ShouldBeModifiable() {
+        User user = new User("1", "testUser", "hashedPassword");
+        assertDoesNotThrow(() -> {
+            user.password = "newPassword";
+        }, "Password should be modifiable");
+        assertEquals("newPassword", user.password, "Password should be updated with new value");
+    }
+
+    @Test
+    void constructor_ShouldNotInitializePasswordField() {
+        User user = new User("1", "testUser", "hashedPassword");
+        assertEquals("plaintextpassword", user.password, "Constructor should not initialize the password field");
+    }
+
+    @Test
+    void token_ShouldNotIncludePasswordInToken() {
+        User user = new User("1", "testUser", "hashedPassword");
+        user.password = "secretPassword";
+        String token = user.token(TEST_SECRET);
+        SecretKey key = Keys.hmacShaKeyFor(TEST_SECRET.getBytes());
+        String tokenContent = Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody().toString();
+        assertFalse(tokenContent.contains("secretPassword"), "Token should not include the password");
+    }
+
+    @Test
+    void fetch_ShouldNotSetPasswordFieldFromDatabase() throws Exception {
+        String username = "testUser";
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(true);
+        when(mockResultSet.getString("user_id")).thenReturn("1");
+        when(mockResultSet.getString("username")).thenReturn(username);
+        when(mockResultSet.getString("password")).thenReturn("databasePassword");
+
+        User result = User.fetch(username);
+
+        assertNotNull(result, "Fetch should return a user");
+        assertEquals("plaintextpassword", result.password, "Fetch should not set the password field from database");
+    }
 }
