@@ -20,15 +20,7 @@ public class User {
 
   public String token(String secret) {
     SecretKey key = Keys.hmacShaKeyFor(secret.getBytes());
-    String jws = Jwts.builder().setSubject(this.username).signWith(key).compact();
-    return jws;
-  }
-
-  public static void assertAuth(String secret, String token) {
-    try {
-      SecretKey key = Keys.hmacShaKeyFor(secret.getBytes());
-      Jwts.parser()
-        .setSigningKey(key)
+y(key)
         .parseClaimsJws(token);
     } catch(Exception e) {
       e.printStackTrace();
