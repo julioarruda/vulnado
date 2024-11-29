@@ -1,0 +1,69 @@
+name: PR only review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  repository-projects: write
+
+jobs:
+  generate_tests:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+    
+      - name: Authenticate with Keycloak
+        id: keycloak_auth
+        run: |
+          TOKEN_RESPONSE=$(curl -s -X POST 'https://auth.reinvent.br.ai-impact.gft-cloud.com/realms/ai-impact/protocol/openid-connect/token' \
+            -H 'Content-Type: application/x-www-form-urlencoded' \
+            -d 'client_id=ai-impact-client' \
+            -d 'client_secret=${{ secrets.CLIENT_SECRET }}' \
+            -d 'grant_type=client_credentials')
+          ACCESS_TOKEN=$(echo $TOKEN_RESPONSE | jq -r '.access_token')
+
+          if [ -z "$ACCESS_TOKEN" ] || [ "$ACCESS_TOKEN" == "null" ]; then
+            echo "Failed to obtain access token"
+            echo "$TOKEN_RESPONSE"
+            exit 1
+          fi
+
+          echo "access_token=$ACCESS_TOKEN" >> $GITHUB_ENV
+
+      - name: Prepare and Send for Code Review
+        id: send_code_review
+        run: |
+          RESPONSE=$(curl --location 'https://api.reinvent.br.ai-impact.gft-cloud.com/ai/review' \
+            --header "Authorization: Bearer ${{ env.access_token }}" \
+            --form 'RunName="CodeReview"' \
+            --form 'jobName="DemoCodeReviewerGithub"' \
+            --form 'PromptId="CodeReviewer__CodeReviewer_V1_Conventions"' \
+            --form 'Llm="${{ vars.LLM }}"' \
+            --form 'PullRequestId="${{ github.event.pull_request.number }}"' \
+            --form 'RepoName="julioarruda/vulnado"' \
+            --form 'AdditionalInstructions="generate the answer in the following language ${{ vars.LANGUAGE }}"' \
+            --form 'Conventions="Header,Description,Summary,Recomendations,VulnExplanation"')
+          echo "API Response: $RESPONSE"
+          JOB_ID=$(echo $RESPONSE | jq -r '.job_id')
+          echo "job_id=$JOB_ID" >> $GITHUB_ENV
+
+      - name: Monitor Code Review Job Status
+        id: monitor_code_review_status
+        run: |
+          JOB_ID=${{ env.job_id }}
+          STATUS="Pending"
+          while [[ "$STATUS" != "Completed" ]]; do
+            RESPONSE=$(curl --location "https://api.reinvent.br.ai-impact.gft-cloud.com/ai/jobs/$JOB_ID/status" \
+              --header "Authorization: Bearer ${{ env.access_token }}")
+            STATUS=$(echo $RESPONSE)
+            echo "Current status: $STATUS"
+            sleep 10
+          done
+          echo "Final status: $STATUS"
+          OUTPUT_URIS=$(echo $RESPONSE | jq -r '.results[].output[].uri')
+          echo "job_response=$RESPONSE" >> $GITHUB_ENV
+          echo "output_uris=$OUTPUT_URIS" >> $GITHUB_ENV
