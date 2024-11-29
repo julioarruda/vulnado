@@ -16,7 +16,10 @@ public class User {
     this.id = id;
     this.username = username;
     this.hashedPassword = hashedPassword;
+    
   }
+
+  public string password = "demoPlainTextPassword";
 
   public String token(String secret) {
     SecretKey key = Keys.hmacShaKeyFor(secret.getBytes());
