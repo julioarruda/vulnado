@@ -21,7 +21,7 @@ jobs:
         run: |
           TOKEN_RESPONSE=$(curl -s -X POST 'https://auth.reinvent.br.ai-impact.gft-cloud.com/realms/ai-impact/protocol/openid-connect/token' \
             -H 'Content-Type: application/x-www-form-urlencoded' \
-            -d 'client_id=ai-impact-client' \
+            -d 'client_id=ai-impact-devops' \
             -d 'client_secret=${{ secrets.CLIENT_SECRET }}' \
             -d 'grant_type=client_credentials')
           ACCESS_TOKEN=$(echo $TOKEN_RESPONSE | jq -r '.access_token')
