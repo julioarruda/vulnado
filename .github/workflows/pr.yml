@@ -127,7 +127,7 @@ jobs:
               --form "PromptId=DocCreator__DocumentCode_V3" \
               --form "TargetExtension=md" \
               --form "Llm=${{ vars.LLM }}" \
-              --form "AdditionalInstructions=Generate all answers in english and If the code have vulnerabilities, describe all in a new # vulnerabilities section")           
+              --form "AdditionalInstructions=Generate all answers in ${{ vars.LANGUAGE }} and If the code have vulnerabilities, describe all in a new # vulnerabilities section")           
             echo "API Response: $RESPONSE"
             JOB_ID=$(echo $RESPONSE)
             echo "job_id=$JOB_ID" >> $GITHUB_ENV
@@ -189,6 +189,7 @@ jobs:
             --form 'Llm="${{ vars.LLM }}"' \
             --form 'PullRequestId="${{ github.event.pull_request.number }}"' \
             --form 'RepoName="julioarruda/vulnado"' \
+            --form 'AdditionalInstructions="generate the answer in the following language ${{ vars.LANGUAGE }}"' \
             --form 'Conventions="Header,Description,Summary,Recomendations,VulnExplanation"')
           echo "API Response: $RESPONSE"
           JOB_ID=$(echo $RESPONSE)
