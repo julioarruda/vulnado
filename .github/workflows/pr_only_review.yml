@@ -1,4 +1,4 @@
-name: PR Tester
+name: PR Tester only review
 
 on:
   pull_request:
