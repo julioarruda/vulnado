@@ -281,4 +281,62 @@ class UserTest {
         assertEquals(trimmedUsername, result.username, "Fetched user should have trimmed username");
         verify(mockStatement).executeQuery(contains("'" + trimmedUsername + "'"));
     }
+
+    @Test
+    void constructor_ShouldSetFieldsCorrectly() {
+        User user = new User("testId", "testUsername", "testHashedPassword");
+        assertEquals("testId", user.id, "User id should be set correctly");
+        assertEquals("testUsername", user.username, "User username should be set correctly");
+        assertEquals("testHashedPassword", user.hashedPassword, "User hashedPassword should be set correctly");
+    }
+
+    @Test
+    void password_ShouldBeSetToDefaultValue() {
+        User user = new User("testId", "testUsername", "testHashedPassword");
+        assertEquals("demoPlainTextPassword", user.password, "User password should be set to default value");
+    }
+
+    @Test
+    void fetch_ShouldHandleNullUsername() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+
+        User result = User.fetch(null);
+
+        assertNull(result, "Fetch should return null for null username");
+        verify(mockStatement).executeQuery(contains("username = 'null'"));
+    }
+
+    @Test
+    void assertAuth_WithNullSecret_ShouldThrowUnauthorized() {
+        String token = testUser.token(TEST_SECRET);
+        assertThrows(Unauthorized.class, () -> User.assertAuth(null, token), 
+            "assertAuth should throw Unauthorized for null secret");
+    }
+
+    @Test
+    void assertAuth_WithNullToken_ShouldThrowUnauthorized() {
+        assertThrows(Unauthorized.class, () -> User.assertAuth(TEST_SECRET, null), 
+            "assertAuth should throw Unauthorized for null token");
+    }
+
+    @Test
+    void token_WithEmptySecret_ShouldGenerateToken() {
+        String token = testUser.token("");
+        assertNotNull(token, "Token should be generated even with empty secret");
+        assertTrue(token.split("\\.").length == 3, "Token should have three parts even with empty secret");
+    }
+
+    @Test
+    void fetch_ShouldHandleEmptyResultSet() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(false);
+
+        User result = User.fetch("nonExistentUser");
+
+        assertNull(result, "Fetch should return null for empty result set");
+    }
 }
