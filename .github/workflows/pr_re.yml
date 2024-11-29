@@ -48,7 +48,7 @@ jobs:
             --form 'AdditionalInstructions="generate the answer in the following language ${{ vars.LANGUAGE }}"' \
             --form 'Conventions="Header,Description,Summary,Recomendations,VulnExplanation"')
           echo "API Response: $RESPONSE"
-          JOB_ID=$(echo $RESPONSE | jq -r '.job_id')
+          JOB_ID=$(echo $RESPONSE)
           echo "job_id=$JOB_ID" >> $GITHUB_ENV
 
       - name: Monitor Code Review Job Status
