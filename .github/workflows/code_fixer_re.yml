@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   run_code_fix:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
