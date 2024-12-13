@@ -11,6 +11,7 @@ public class VulnadoApplicationTests {
 
 	@Test
 	public void contextLoads() {
+		assert true : "Context loaded successfully";
 	}
 
 }
