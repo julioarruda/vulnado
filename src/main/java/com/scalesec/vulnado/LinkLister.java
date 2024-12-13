@@ -18,10 +18,7 @@ public class LinkLister {
     for (Element link : links) {
       result.add(link.absUrl("href"));
     }
-    return result;
-  }
-
-  public static List<String> getLinksV2(String url) throws BadRequest {
+    g> getLinksV2(String url) throws BadRequest {
     try {
       URL aUrl= new URL(url);
       String host = aUrl.getHost();
