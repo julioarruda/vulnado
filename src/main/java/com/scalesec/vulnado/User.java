@@ -26,7 +26,7 @@ public class User {
 
   public static void assertAuth(String secret, String token) {
     try {
-      SecretKey key = Keys.hmacShaKeyFor(secret.getBytes());
+      SecretKey key = Keys.hmacShaKeyFor(secret.getBytes());,l
       Jwts.parser()
         .setSigningKey(key)
         .parseClaimsJws(token);
