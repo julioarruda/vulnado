@@ -151,10 +151,9 @@ class UserTest {
 
     @Test
     void assertAuth_WithExpiredToken_ShouldThrowUnauthorized() {
-        // This test assumes that the token implementation includes an expiration time
         String expiredToken = Jwts.builder()
                 .setSubject(testUser.username)
-                .setExpiration(new java.util.Date(System.currentTimeMillis() - 1000)) // Set expiration to 1 second ago
+                .setExpiration(new java.util.Date(System.currentTimeMillis() - 1000))
                 .signWith(Keys.hmacShaKeyFor(TEST_SECRET.getBytes()))
                 .compact();
 
@@ -280,5 +279,91 @@ class UserTest {
         assertNotNull(result, "Fetch should return a user for username with whitespace");
         assertEquals(trimmedUsername, result.username, "Fetched user should have trimmed username");
         verify(mockStatement).executeQuery(contains("'" + trimmedUsername + "'"));
+    }
+
+    @Test
+    void fetch_ShouldHandleSyntaxErrorInQuery() throws Exception {
+        String username = "syntaxErrorUser";
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenThrow(new java.sql.SQLException("Syntax error in SQL statement"));
+
+        ByteArrayOutputStream errContent = new ByteArrayOutputStream();
+        System.setErr(new PrintStream(errContent));
+
+        User result = User.fetch(username);
+
+        assertNull(result, "Fetch should return null when a SQL syntax error occurs");
+        assertTrue(errContent.toString().contains("Syntax error in SQL statement"), "Fetch should print the SQL error message to stderr");
+
+        System.setErr(System.err);
+    }
+
+    @Test
+    void fetch_ShouldHandleConnectionTimeout() throws Exception {
+        String username = "timeoutUser";
+        when(Postgres.connection()).thenThrow(new java.sql.SQLTimeoutException("Connection timed out"));
+
+        ByteArrayOutputStream errContent = new ByteArrayOutputStream();
+        System.setErr(new PrintStream(errContent));
+
+        User result = User.fetch(username);
+
+        assertNull(result, "Fetch should return null when a connection timeout occurs");
+        assertTrue(errContent.toString().contains("Connection timed out"), "Fetch should print the timeout error message to stderr");
+
+        System.setErr(System.err);
+    }
+
+    @Test
+    void fetch_ShouldHandleNullUsername() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+
+        User result = User.fetch(null);
+
+        assertNull(result, "Fetch should return null when username is null");
+        verify(mockStatement).executeQuery(contains("username = 'null'"));
+    }
+
+    @Test
+    void fetch_ShouldHandleEmptyUsername() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+
+        User result = User.fetch("");
+
+        assertNull(result, "Fetch should return null when username is empty");
+        verify(mockStatement).executeQuery(contains("username = ''"));
+    }
+
+    @Test
+    void assertAuth_ShouldHandleNullSecret() {
+        String token = testUser.token(TEST_SECRET);
+        assertThrows(IllegalArgumentException.class, () -> User.assertAuth(null, token), "assertAuth should throw IllegalArgumentException for null secret");
+    }
+
+    @Test
+    void assertAuth_ShouldHandleNullToken() {
+        assertThrows(IllegalArgumentException.class, () -> User.assertAuth(TEST_SECRET, null), "assertAuth should throw IllegalArgumentException for null token");
+    }
+
+    @Test
+    void token_ShouldHandleNullSecret() {
+        assertThrows(IllegalArgumentException.class, () -> testUser.token(null), "token method should throw IllegalArgumentException for null secret");
+    }
+
+    @Test
+    void fetch_ShouldHandleVeryLongUsername() throws Exception {
+        String veryLongUsername = "a".repeat(1000);
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+
+        User.fetch(veryLongUsername);
+
+        verify(mockStatement).executeQuery(contains(veryLongUsername));
     }
 }
