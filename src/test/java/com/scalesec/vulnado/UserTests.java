@@ -281,4 +281,80 @@ class UserTest {
         assertEquals(trimmedUsername, result.username, "Fetched user should have trimmed username");
         verify(mockStatement).executeQuery(contains("'" + trimmedUsername + "'"));
     }
+
+    @Test
+    void fetch_ShouldHandleChangedQuery() throws Exception {
+        String username = "testUser";
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+
+        User.fetch(username);
+
+        // Verify that the query includes the word "change" as per the modified code
+        verify(mockStatement).executeQuery(contains("change"));
+    }
+
+    @Test
+    void fetch_ShouldHandleEmptyUsername() throws Exception {
+        String username = "";
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(false);
+
+        User result = User.fetch(username);
+
+        assertNull(result, "Fetch should return null for empty username");
+        verify(mockStatement).executeQuery(contains("username = ''"));
+    }
+
+    @Test
+    void fetch_ShouldHandleNullUsername() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+
+        User result = User.fetch(null);
+
+        assertNull(result, "Fetch should return null for null username");
+        verify(mockStatement, never()).executeQuery(anyString());
+    }
+
+    @Test
+    void assertAuth_WithNullSecret_ShouldThrowUnauthorized() {
+        String token = testUser.token(TEST_SECRET);
+        assertThrows(Unauthorized.class, () -> User.assertAuth(null, token), "assertAuth should throw Unauthorized for null secret");
+    }
+
+    @Test
+    void assertAuth_WithNullToken_ShouldThrowUnauthorized() {
+        assertThrows(Unauthorized.class, () -> User.assertAuth(TEST_SECRET, null), "assertAuth should throw Unauthorized for null token");
+    }
+
+    @Test
+    void token_WithEmptySecret_ShouldGenerateToken() {
+        String token = testUser.token("");
+        assertNotNull(token, "Token should be generated even with empty secret");
+        assertTrue(token.split("\\.").length == 3, "Token should have three parts separated by dots");
+    }
+
+    @Test
+    void fetch_ShouldHandleExceptionDuringResultSetProcessing() throws Exception {
+        String username = "exceptionUser";
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(true);
+        when(mockResultSet.getString("user_id")).thenThrow(new RuntimeException("ResultSet processing error"));
+
+        ByteArrayOutputStream errContent = new ByteArrayOutputStream();
+        System.setErr(new PrintStream(errContent));
+
+        User result = User.fetch(username);
+
+        assertNull(result, "Fetch should return null when exception occurs during ResultSet processing");
+        assertTrue(errContent.toString().contains("ResultSet processing error"), "Fetch should print the exception message to stderr");
+
+        System.setErr(System.err);
+    }
 }
