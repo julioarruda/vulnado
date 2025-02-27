@@ -9,21 +9,30 @@ import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.UUID;
 
+import java.util.logging.Logger;
 public class Postgres {
+import java.util.logging.Level;
+
 
     public static Connection connection() {
+public class Postgres {
         try {
-            Class.forName("org.postgresql.Driver");
+    private static final Logger LOGGER = Logger.getLogger(Postgres.class.getName());
+        try {
+
             String url = new StringBuilder()
+    private Postgres() {
                     .append("jdbc:postgresql://")
+        // Private constructor to hide the implicit public one
                     .append(System.getenv("PGHOST"))
+    }
                     .append("/")
+
                     .append(System.getenv("PGDATABASE")).toString();
             return DriverManager.getConnection(url,
                     System.getenv("PGUSER"), System.getenv("PGPASSWORD"));
         } catch (Exception e) {
-            e.printStackTrace();
-            System.err.println(e.getClass().getName()+": "+e.getMessage());
+            LOGGER.log(Level.SEVERE, e.getMessage(), e);
             System.exit(1);
         }
         return null;
@@ -32,7 +41,7 @@ public class Postgres {
         try {
             System.out.println("Setting up Database...");
             Connection c = connection();
-            Statement stmt = c.createStatement();
+            LOGGER.info("Setting up Database...");
 
             // Create Schema
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS users(user_id VARCHAR (36) PRIMARY KEY, username VARCHAR (50) UNIQUE NOT NULL, password VARCHAR (50) NOT NULL, created_on TIMESTAMP NOT NULL, last_login TIMESTAMP)");
@@ -54,14 +63,13 @@ public class Postgres {
             c.close();
         } catch (Exception e) {
             System.out.println(e);
-            System.exit(1);
+            LOGGER.log(Level.SEVERE, "Error setting up database", e);
         }
     }
 
     // Java program to calculate MD5 hash value
     public static String md5(String input)
     {
-        try {
 
             // Static getInstance method is called with hashing MD5
             MessageDigest md = MessageDigest.getInstance("MD5");
@@ -72,7 +80,7 @@ public class Postgres {
 
             // Convert byte array into signum representation
             BigInteger no = new BigInteger(1, messageDigest);
-
+            // Convert byte array into signum representation
             // Convert message digest into hex value
             String hashtext = no.toString(16);
             while (hashtext.length() < 32) {
@@ -84,14 +92,14 @@ public class Postgres {
         // For specifying wrong message digest algorithms
         catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
+        StringBuilder hashtext = new StringBuilder(no.toString(16));
+        while (hashtext.length() < 32) {
+            hashtext.insert(0, "0");
         }
-    }
-
-    private static void insertUser(String username, String password) {
-       String sql = "INSERT INTO users (user_id, username, password, created_on) VALUES (?, ?, ?, current_timestamp)";
+        return hashtext.toString();
        PreparedStatement pStatement = null;
        try {
-          pStatement = connection().prepareStatement(sql);
+        throw new IllegalArgumentException("MD5 algorithm not found", e);
           pStatement.setString(1, UUID.randomUUID().toString());
           pStatement.setString(2, username);
           pStatement.setString(3, md5(password));
@@ -107,11 +115,9 @@ public class Postgres {
         try {
             pStatement = connection().prepareStatement(sql);
             pStatement.setString(1, UUID.randomUUID().toString());
-            pStatement.setString(2, username);
             pStatement.setString(3, body);
             pStatement.executeUpdate();
         } catch(Exception e) {
             e.printStackTrace();
         }
-    }
 }
