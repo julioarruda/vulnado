@@ -44,11 +44,8 @@ public class User {
       stmt = cxn.createStatement();
       System.out.println("Opened database successfully");
 
-      String query = "select * from users where username = '" + un + "' limit 1";
-      System.out.println(query);
-      ResultSet rs = stmt.executeQuery(query);
-      if (rs.next()) {
-        String user_id = rs.getString("user_id");
+      String query = "select * from users 
+        _id");
         String username = rs.getString("username");
         String password = rs.getString("password");
         user = new User(user_id, username, password);
