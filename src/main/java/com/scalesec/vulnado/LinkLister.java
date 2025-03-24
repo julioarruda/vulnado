@@ -8,11 +8,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.io.IOException;
 import java.net.*;
-
+import java.util.logging.Logger;
 
 public class LinkLister {
+
+  private static final Logger logger = Logger.getLogger(LinkLister.class.getName());
+
+  // Construtor privado para evitar a instanciação da classe
+  private LinkLister() {
+    throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
+  }
+
   public static List<String> getLinks(String url) throws IOException {
-    List<String> result = new ArrayList<String>();
+    List<String> result = new ArrayList<>();
     Document doc = Jsoup.connect(url).get();
     Elements links = doc.select("a");
     for (Element link : links) {
@@ -23,9 +31,9 @@ public class LinkLister {
 
   public static List<String> getLinksV2(String url) throws BadRequest {
     try {
-      URL aUrl= new URL(url);
+      URL aUrl = new URL(url);
       String host = aUrl.getHost();
-      System.out.println(host);
+      logger.info("Host: " + host);
       if (host.startsWith("172.") || host.startsWith("192.168") || host.startsWith("10.")){
         throw new BadRequest("Use of Private IP");
       } else {

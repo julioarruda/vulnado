@@ -1,16 +1,19 @@
 package com.scalesec.vulnado;
 
 import java.sql.Connection;
-import java.sql.Statement;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.JwtParser;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import javax.crypto.SecretKey;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class User {
-  public String id, username, hashedPassword;
+  private static final Logger logger = LoggerFactory.getLogger(User.class);
+  private final String id;
+  private final String username;
+  private final String hashedPassword;
 
   public User(String id, String username, String hashedPassword) {
     this.id = id;
@@ -18,47 +21,67 @@ public class User {
     this.hashedPassword = hashedPassword;
   }
 
+  public String getId() {
+    return id;
+  }
+
+  public String getUsername() {
+    return username;
+  }
+
+  public String getHashedPassword() {
+    return hashedPassword;
+  }
+
   public String token(String secret) {
     SecretKey key = Keys.hmacShaKeyFor(secret.getBytes());
-    String jws = Jwts.builder().setSubject(this.username).signWith(key).compact();
-    return jws;
+    return Jwts.builder().setSubject(this.username).signWith(key).compact();
   }
 
   public static void assertAuth(String secret, String token) {
     try {
       SecretKey key = Keys.hmacShaKeyFor(secret.getBytes());
-      Jwts.parser()
+      Jwts.parserBuilder()
         .setSigningKey(key)
+        .build()
         .parseClaimsJws(token);
     } catch(Exception e) {
-      e.printStackTrace();
+      logger.error("Unauthorized access attempt", e);
       throw new Unauthorized(e.getMessage());
     }
   }
 
   public static User fetch(String un) {
-    Statement stmt = null;
+    PreparedStatement pstmt = null; 
     User user = null;
+    Connection cxn = null;
+    ResultSet rs = null;
     try {
-      Connection cxn = Postgres.connection();
-      stmt = cxn.createStatement();
-      System.out.println("Opened database successfully");
+      cxn = Postgres.connection();
+      logger.info("Opened database successfully");
 
-      String query = "select * from users where username = '" + un + "' limit 1";
-      System.out.println(query);
-      ResultSet rs = stmt.executeQuery(query);
+      String query = "SELECT * FROM users WHERE username = ? LIMIT 1";
+      pstmt = cxn.prepareStatement(query);
+      pstmt.setString(1, un);
+      rs = pstmt.executeQuery();
+      
       if (rs.next()) {
-        String user_id = rs.getString("user_id");
+        String userId = rs.getString("user_id");
         String username = rs.getString("username");
         String password = rs.getString("password");
-        user = new User(user_id, username, password);
+        user = new User(userId, username, password);
       }
-      cxn.close();
     } catch (Exception e) {
-      e.printStackTrace();
-      System.err.println(e.getClass().getName()+": "+e.getMessage());
+      logger.error("Error fetching user", e);
     } finally {
-      return user;
+      try {
+        if (rs != null) rs.close();
+        if (pstmt != null) pstmt.close();
+        if (cxn != null) cxn.close();
+      } catch (Exception e) {
+        logger.error("Error closing resources", e);
+      }
     }
+    return user;
   }
 }

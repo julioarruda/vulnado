@@ -2,8 +2,8 @@ package com.scalesec.vulnado;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.beans.factory.annotation.*;
-import org.springframework.boot.autoconfigure.*;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import java.util.List;
 import java.io.Serializable;
 
@@ -14,28 +14,48 @@ public class CommentsController {
   private String secret;
 
   @CrossOrigin(origins = "*")
-  @RequestMapping(value = "/comments", method = RequestMethod.GET, produces = "application/json")
+  @GetMapping(value = "/comments", produces = "application/json")
   List<Comment> comments(@RequestHeader(value="x-auth-token") String token) {
     User.assertAuth(secret, token);
     return Comment.fetch_all();
   }
 
   @CrossOrigin(origins = "*")
-  @RequestMapping(value = "/comments", method = RequestMethod.POST, produces = "application/json", consumes = "application/json")
+  @PostMapping(value = "/comments", produces = "application/json", consumes = "application/json")
   Comment createComment(@RequestHeader(value="x-auth-token") String token, @RequestBody CommentRequest input) {
-    return Comment.create(input.username, input.body);
+    User.assertAuth(secret, token);
+    return Comment.create(input.getUsername(), input.getBody());
   }
 
   @CrossOrigin(origins = "*")
-  @RequestMapping(value = "/comments/{id}", method = RequestMethod.DELETE, produces = "application/json")
+  @DeleteMapping(value = "/comments/{id}", produces = "application/json")
   Boolean deleteComment(@RequestHeader(value="x-auth-token") String token, @PathVariable("id") String id) {
+    User.assertAuth(secret, token);
     return Comment.delete(id);
   }
 }
 
 class CommentRequest implements Serializable {
-  public String username;
-  public String body;
+  private static final long serialVersionUID = 1L; // Added for serialization
+
+  private String username;
+  private String body;
+
+  public String getUsername() {
+    return username;
+  }
+
+  public void setUsername(String username) {
+    this.username = username;
+  }
+
+  public String getBody() {
+    return body;
+  }
+
+  public void setBody(String body) {
+    this.body = body;
+  }
 }
 
 @ResponseStatus(HttpStatus.BAD_REQUEST)
