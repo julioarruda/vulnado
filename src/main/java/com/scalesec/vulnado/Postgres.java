@@ -6,14 +6,23 @@ import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.UUID;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Postgres {
 
-    public static Connection connection() {
+    private static final Logger logger = Logger.getLogger(Postgres.class.getName());
+
+    // Private constructor to prevent instantiation
+    private Postgres() {
+        throw new UnsupportedOperationException("Utility class");
+    }
+
+    public static Connection connection() throws DatabaseConnectionException {
         try {
-            Class.forName("org.postgresql.Driver");
             String url = new StringBuilder()
                     .append("jdbc:postgresql://")
                     .append(System.getenv("PGHOST"))
@@ -21,16 +30,14 @@ public class Postgres {
                     .append(System.getenv("PGDATABASE")).toString();
             return DriverManager.getConnection(url,
                     System.getenv("PGUSER"), System.getenv("PGPASSWORD"));
-        } catch (Exception e) {
-            e.printStackTrace();
-            System.err.println(e.getClass().getName()+": "+e.getMessage());
-            System.exit(1);
+        } catch (SQLException e) {
+            throw new DatabaseConnectionException("Failed to establish database connection", e);
         }
-        return null;
     }
-    public static void setup(){
+    
+    public static void setup() {
         try {
-            System.out.println("Setting up Database...");
+            logger.info("Setting up Database...");
             Connection c = connection();
             Statement stmt = c.createStatement();
 
@@ -52,66 +59,62 @@ public class Postgres {
             insertComment("rick", "cool dog m8");
             insertComment("alice", "OMG so cute!");
             c.close();
-        } catch (Exception e) {
-            System.out.println(e);
+        } catch (DatabaseConnectionException | SQLException e) {
+            logger.log(Level.SEVERE, "Error setting up database", e);
             System.exit(1);
         }
     }
 
     // Java program to calculate MD5 hash value
-    public static String md5(String input)
-    {
+    public static String md5(String input) {
         try {
-
-            // Static getInstance method is called with hashing MD5
             MessageDigest md = MessageDigest.getInstance("MD5");
-
-            // digest() method is called to calculate message digest
-            //  of an input digest() return array of byte
             byte[] messageDigest = md.digest(input.getBytes());
-
-            // Convert byte array into signum representation
             BigInteger no = new BigInteger(1, messageDigest);
-
-            // Convert message digest into hex value
             String hashtext = no.toString(16);
             while (hashtext.length() < 32) {
                 hashtext = "0" + hashtext;
             }
             return hashtext;
-        }
-
-        // For specifying wrong message digest algorithms
-        catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+        } catch (NoSuchAlgorithmException e) {
+            throw new HashingException("MD5 algorithm not found", e);
         }
     }
 
     private static void insertUser(String username, String password) {
-       String sql = "INSERT INTO users (user_id, username, password, created_on) VALUES (?, ?, ?, current_timestamp)";
-       PreparedStatement pStatement = null;
-       try {
-          pStatement = connection().prepareStatement(sql);
-          pStatement.setString(1, UUID.randomUUID().toString());
-          pStatement.setString(2, username);
-          pStatement.setString(3, md5(password));
-          pStatement.executeUpdate();
-       } catch(Exception e) {
-         e.printStackTrace();
-       }
+        String sql = "INSERT INTO users (user_id, username, password, created_on) VALUES (?, ?, ?, current_timestamp)";
+        try (PreparedStatement pStatement = connection().prepareStatement(sql)) {
+            pStatement.setString(1, UUID.randomUUID().toString());
+            pStatement.setString(2, username);
+            pStatement.setString(3, md5(password));
+            pStatement.executeUpdate();
+        } catch (DatabaseConnectionException | SQLException e) {
+            logger.log(Level.SEVERE, "Error inserting user", e);
+        }
     }
 
     private static void insertComment(String username, String body) {
         String sql = "INSERT INTO comments (id, username, body, created_on) VALUES (?, ?, ?, current_timestamp)";
-        PreparedStatement pStatement = null;
-        try {
-            pStatement = connection().prepareStatement(sql);
+        try (PreparedStatement pStatement = connection().prepareStatement(sql)) {
             pStatement.setString(1, UUID.randomUUID().toString());
             pStatement.setString(2, username);
             pStatement.setString(3, body);
             pStatement.executeUpdate();
-        } catch(Exception e) {
-            e.printStackTrace();
+        } catch (DatabaseConnectionException | SQLException e) {
+            logger.log(Level.SEVERE, "Error inserting comment", e);
         }
+    }
+}
+
+// Custom exceptions
+class DatabaseConnectionException extends Exception {
+    public DatabaseConnectionException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}
+
+class HashingException extends RuntimeException {
+    public HashingException(String message, Throwable cause) {
+        super(message, cause);
     }
 }

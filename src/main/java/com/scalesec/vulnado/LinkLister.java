@@ -4,15 +4,19 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.io.IOException;
 import java.net.*;
 
-
 public class LinkLister {
+  private static final Logger logger = LoggerFactory.getLogger(LinkLister.class);
+
   public static List<String> getLinks(String url) throws IOException {
-    List<String> result = new ArrayList<String>();
+    List<String> result = new ArrayList<>();  // Uso do operador diamante
     Document doc = Jsoup.connect(url).get();
     Elements links = doc.select("a");
     for (Element link : links) {
@@ -25,13 +29,14 @@ public class LinkLister {
     try {
       URL aUrl= new URL(url);
       String host = aUrl.getHost();
-      System.out.println(host);
+      logger.info("Host: {}", host);
       if (host.startsWith("172.") || host.startsWith("192.168") || host.startsWith("10.")){
         throw new BadRequest("Use of Private IP");
       } else {
         return getLinks(url);
       }
     } catch(Exception e) {
+      logger.error("Error fetching links: {}", e.getMessage());
       throw new BadRequest(e.getMessage());
     }
   }
