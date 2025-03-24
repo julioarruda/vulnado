@@ -2,40 +2,65 @@ package com.scalesec.vulnado;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.beans.factory.annotation.*;
-import org.springframework.boot.autoconfigure.*;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import java.util.List;
 import java.io.Serializable;
 
 @RestController
 @EnableAutoConfiguration
 public class CommentsController {
+
   @Value("${app.secret}")
   private String secret;
 
   @CrossOrigin(origins = "*")
-  @RequestMapping(value = "/comments", method = RequestMethod.GET, produces = "application/json")
-  List<Comment> comments(@RequestHeader(value="x-auth-token") String token) {
+  @GetMapping(value = "/comments", produces = "application/json")
+  public List<Comment> comments(@RequestHeader(value="x-auth-token") String token) {
     User.assertAuth(secret, token);
     return Comment.fetch_all();
   }
 
   @CrossOrigin(origins = "*")
-  @RequestMapping(value = "/comments", method = RequestMethod.POST, produces = "application/json", consumes = "application/json")
-  Comment createComment(@RequestHeader(value="x-auth-token") String token, @RequestBody CommentRequest input) {
-    return Comment.create(input.username, input.body);
+  @PostMapping(value = "/comments", produces = "application/json", consumes = "application/json")
+  public Comment createComment(@RequestHeader(value="x-auth-token") String token, @RequestBody CommentRequest input) {
+    User.assertAuth(secret, token); // Ensure authentication check on POST as well
+    return Comment.create(input.getUsername(), input.getBody());
   }
 
   @CrossOrigin(origins = "*")
-  @RequestMapping(value = "/comments/{id}", method = RequestMethod.DELETE, produces = "application/json")
-  Boolean deleteComment(@RequestHeader(value="x-auth-token") String token, @PathVariable("id") String id) {
+  @DeleteMapping(value = "/comments/{id}", produces = "application/json")
+  public Boolean deleteComment(@RequestHeader(value="x-auth-token") String token, @PathVariable("id") String id) {
+    User.assertAuth(secret, token); // Ensure authentication check on DELETE as well
     return Comment.delete(id);
   }
 }
 
 class CommentRequest implements Serializable {
-  public String username;
-  public String body;
+  private static final long serialVersionUID = 1L;
+  
+  private String username;
+  private String body;
+
+  // Getter for username
+  public String getUsername() {
+    return username;
+  }
+
+  // Setter for username
+  public void setUsername(String username) {
+    this.username = username;
+  }
+
+  // Getter for body
+  public String getBody() {
+    return body;
+  }
+
+  // Setter for body
+  public void setBody(String body) {
+    this.body = body;
+  }
 }
 
 @ResponseStatus(HttpStatus.BAD_REQUEST)

@@ -8,11 +8,21 @@ import java.util.ArrayList;
 import java.util.List;
 import java.io.IOException;
 import java.net.*;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LinkLister {
+
+  // Logger instance
+  private static final Logger logger = LoggerFactory.getLogger(LinkLister.class);
+
+  // Private constructor to prevent instantiation
+  private LinkLister() {
+    // This constructor is intentionally empty. Nothing special is needed here.
+  }
+
   public static List<String> getLinks(String url) throws IOException {
-    List<String> result = new ArrayList<String>();
+    List<String> result = new ArrayList<>();
     Document doc = Jsoup.connect(url).get();
     Elements links = doc.select("a");
     for (Element link : links) {
@@ -23,15 +33,16 @@ public class LinkLister {
 
   public static List<String> getLinksV2(String url) throws BadRequest {
     try {
-      URL aUrl= new URL(url);
+      URL aUrl = new URL(url);
       String host = aUrl.getHost();
-      System.out.println(host);
-      if (host.startsWith("172.") || host.startsWith("192.168") || host.startsWith("10.")){
+      logger.info("Host: {}", host);
+      if (host.startsWith("172.") || host.startsWith("192.168") || host.startsWith("10.")) {
         throw new BadRequest("Use of Private IP");
       } else {
         return getLinks(url);
       }
     } catch(Exception e) {
+      logger.error("Error encountered: {}", e.getMessage());
       throw new BadRequest(e.getMessage());
     }
   }
