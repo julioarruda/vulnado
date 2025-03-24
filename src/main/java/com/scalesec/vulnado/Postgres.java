@@ -8,29 +8,56 @@ import java.security.NoSuchAlgorithmException;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.UUID;
+import java.util.logging.Logger;
+import java.util.logging.Level;
+
+// Custom exception classes
+class DatabaseConnectionException extends Exception {
+    public DatabaseConnectionException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}
+
+class DatabaseOperationException extends Exception {
+    public DatabaseOperationException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}
+
+class HashingException extends Exception {
+    public HashingException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}
 
 public class Postgres {
 
-    public static Connection connection() {
+    private static final Logger logger = Logger.getLogger(Postgres.class.getName());
+
+    // Private constructor to prevent instantiation
+    private Postgres() {
+        throw new UnsupportedOperationException("Utility class");
+    }
+
+    public static Connection connection() throws DatabaseConnectionException {
         try {
             Class.forName("org.postgresql.Driver");
-            String url = new StringBuilder()
+            StringBuilder urlBuilder = new StringBuilder()
                     .append("jdbc:postgresql://")
                     .append(System.getenv("PGHOST"))
                     .append("/")
-                    .append(System.getenv("PGDATABASE")).toString();
-            return DriverManager.getConnection(url,
+                    .append(System.getenv("PGDATABASE"));
+            return DriverManager.getConnection(urlBuilder.toString(),
                     System.getenv("PGUSER"), System.getenv("PGPASSWORD"));
         } catch (Exception e) {
-            e.printStackTrace();
-            System.err.println(e.getClass().getName()+": "+e.getMessage());
-            System.exit(1);
+            logger.log(Level.SEVERE, e.getClass().getName() + ": " + e.getMessage(), e);
+            throw new DatabaseConnectionException("Failed to connect to the database", e);
         }
-        return null;
     }
-    public static void setup(){
+
+    public static void setup() {
         try {
-            System.out.println("Setting up Database...");
+            logger.info("Setting up Database...");
             Connection c = connection();
             Statement stmt = c.createStatement();
 
@@ -52,17 +79,15 @@ public class Postgres {
             insertComment("rick", "cool dog m8");
             insertComment("alice", "OMG so cute!");
             c.close();
-        } catch (Exception e) {
-            System.out.println(e);
+        } catch (DatabaseConnectionException | DatabaseOperationException e) {
+            logger.log(Level.SEVERE, e.getMessage(), e);
             System.exit(1);
         }
     }
 
     // Java program to calculate MD5 hash value
-    public static String md5(String input)
-    {
+    public static String md5(String input) throws HashingException {
         try {
-
             // Static getInstance method is called with hashing MD5
             MessageDigest md = MessageDigest.getInstance("MD5");
 
@@ -83,25 +108,35 @@ public class Postgres {
 
         // For specifying wrong message digest algorithms
         catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+            logger.log(Level.SEVERE, "MD5 algorithm not found", e);
+            throw new HashingException("Failed to calculate MD5 hash", e);
         }
     }
 
-    private static void insertUser(String username, String password) {
-       String sql = "INSERT INTO users (user_id, username, password, created_on) VALUES (?, ?, ?, current_timestamp)";
-       PreparedStatement pStatement = null;
-       try {
-          pStatement = connection().prepareStatement(sql);
-          pStatement.setString(1, UUID.randomUUID().toString());
-          pStatement.setString(2, username);
-          pStatement.setString(3, md5(password));
-          pStatement.executeUpdate();
-       } catch(Exception e) {
-         e.printStackTrace();
-       }
+    private static void insertUser(String username, String password) throws DatabaseConnectionException, DatabaseOperationException {
+        String sql = "INSERT INTO users (user_id, username, password, created_on) VALUES (?, ?, ?, current_timestamp)";
+        PreparedStatement pStatement = null;
+        try {
+            pStatement = connection().prepareStatement(sql);
+            pStatement.setString(1, UUID.randomUUID().toString());
+            pStatement.setString(2, username);
+            pStatement.setString(3, md5(password));
+            pStatement.executeUpdate();
+        } catch (DatabaseConnectionException | HashingException e) {
+            logger.log(Level.SEVERE, "Error inserting user: " + username, e);
+            throw new DatabaseOperationException("Failed to insert user: " + username, e);
+        } finally {
+            if (pStatement != null) {
+                try {
+                    pStatement.close();
+                } catch (Exception e) {
+                    logger.log(Level.WARNING, "Failed to close PreparedStatement", e);
+                }
+            }
+        }
     }
 
-    private static void insertComment(String username, String body) {
+    private static void insertComment(String username, String body) throws DatabaseConnectionException, DatabaseOperationException {
         String sql = "INSERT INTO comments (id, username, body, created_on) VALUES (?, ?, ?, current_timestamp)";
         PreparedStatement pStatement = null;
         try {
@@ -110,8 +145,17 @@ public class Postgres {
             pStatement.setString(2, username);
             pStatement.setString(3, body);
             pStatement.executeUpdate();
-        } catch(Exception e) {
-            e.printStackTrace();
+        } catch (DatabaseConnectionException e) {
+            logger.log(Level.SEVERE, "Error inserting comment for user: " + username, e);
+            throw new DatabaseOperationException("Failed to insert comment for user: " + username, e);
+        } finally {
+            if (pStatement != null) {
+                try {
+                    pStatement.close();
+                } catch (Exception e) {
+                    logger.log(Level.WARNING, "Failed to close PreparedStatement", e);
+                }
+            }
         }
     }
 }
