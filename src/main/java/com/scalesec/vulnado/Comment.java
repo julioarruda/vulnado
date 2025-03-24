@@ -8,8 +8,9 @@ import java.util.ArrayList;
 import java.util.UUID;
 
 public class Comment {
-  public String id, username, body;
-  public Timestamp created_on;
+  private String id, body;
+  private final String username; // Make username final
+  private Timestamp created_on;
 
   public Comment(String id, String username, String body, Timestamp created_on) {
     this.id = id;
@@ -18,7 +19,23 @@ public class Comment {
     this.created_on = created_on;
   }
 
-  public static Comment create(String username, String body){
+  public String getId() {
+    return id;
+  }
+
+  public String getUsername() {
+    return username;
+  }
+
+  public String getBody() {
+    return body;
+  }
+
+  public Timestamp getCreatedOn() {
+    return created_on;
+  }
+
+  public static Comment create(String username, String body) {
     long time = new Date().getTime();
     Timestamp timestamp = new Timestamp(time);
     Comment comment = new Comment(UUID.randomUUID().toString(), username, body, timestamp);
@@ -35,7 +52,7 @@ public class Comment {
 
   public static List<Comment> fetch_all() {
     Statement stmt = null;
-    List<Comment> comments = new ArrayList();
+    List<Comment> comments = new ArrayList<Comment>(); // Corrected generic type
     try {
       Connection cxn = Postgres.connection();
       stmt = cxn.createStatement();
@@ -53,7 +70,7 @@ public class Comment {
       cxn.close();
     } catch (Exception e) {
       e.printStackTrace();
-      System.err.println(e.getClass().getName()+": "+e.getMessage());
+      System.err.println(e.getClass().getName() + ": " + e.getMessage());
     } finally {
       return comments;
     }
@@ -66,7 +83,7 @@ public class Comment {
       PreparedStatement pStatement = con.prepareStatement(sql);
       pStatement.setString(1, id);
       return 1 == pStatement.executeUpdate();
-    } catch(Exception e) {
+    } catch (Exception e) {
       e.printStackTrace();
     } finally {
       return false;

@@ -32,8 +32,15 @@ class LoginRequest implements Serializable {
 }
 
 class LoginResponse implements Serializable {
-  public String token;
-  public LoginResponse(String msg) { this.token = msg; }
+  private final String token; // Changed to private and final
+
+  public LoginResponse(String msg) {
+    this.token = msg;
+  }
+
+  public String getToken() { // Added a getter method for token
+    return token;
+  }
 }
 
 @ResponseStatus(HttpStatus.UNAUTHORIZED)

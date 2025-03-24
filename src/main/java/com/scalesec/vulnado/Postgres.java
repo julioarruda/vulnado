@@ -14,12 +14,12 @@ public class Postgres {
     public static Connection connection() {
         try {
             Class.forName("org.postgresql.Driver");
-            String url = new StringBuilder()
+            StringBuilder url = new StringBuilder()
                     .append("jdbc:postgresql://")
                     .append(System.getenv("PGHOST"))
                     .append("/")
-                    .append(System.getenv("PGDATABASE")).toString();
-            return DriverManager.getConnection(url,
+                    .append(System.getenv("PGDATABASE"));
+            return DriverManager.getConnection(url.toString(),
                     System.getenv("PGUSER"), System.getenv("PGPASSWORD"));
         } catch (Exception e) {
             e.printStackTrace();
@@ -28,6 +28,7 @@ public class Postgres {
         }
         return null;
     }
+
     public static void setup(){
         try {
             System.out.println("Setting up Database...");

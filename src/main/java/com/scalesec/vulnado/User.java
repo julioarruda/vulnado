@@ -10,7 +10,9 @@ import io.jsonwebtoken.security.Keys;
 import javax.crypto.SecretKey;
 
 public class User {
-  public String id, username, hashedPassword;
+  public String id;
+  public String username;
+  public String hashedPassword;
 
   public User(String id, String username, String hashedPassword) {
     this.id = id;
