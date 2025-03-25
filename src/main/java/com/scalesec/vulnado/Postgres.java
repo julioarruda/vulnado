@@ -6,31 +6,35 @@ import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Postgres {
 
-    public static Connection connection() {
+    private static final Logger logger = LoggerFactory.getLogger(Postgres.class);
+
+    public static Connection connection() throws DatabaseConnectionException {
         try {
-            Class.forName("org.postgresql.Driver");
-            String url = new StringBuilder()
-                    .append("jdbc:postgresql://")
-                    .append(System.getenv("PGHOST"))
-                    .append("/")
-                    .append(System.getenv("PGDATABASE")).toString();
+            StringBuilder urlBuilder = new StringBuilder();
+            urlBuilder.append("jdbc:postgresql://")
+                      .append(System.getenv("PGHOST"))
+                      .append("/")
+                      .append(System.getenv("PGDATABASE"));
+            String url = urlBuilder.toString();
             return DriverManager.getConnection(url,
                     System.getenv("PGUSER"), System.getenv("PGPASSWORD"));
-        } catch (Exception e) {
-            e.printStackTrace();
-            System.err.println(e.getClass().getName()+": "+e.getMessage());
-            System.exit(1);
+        } catch (SQLException e) {
+            logger.error("Connection error: ", e);
+            throw new DatabaseConnectionException("Failed to establish database connection", e);
         }
-        return null;
     }
-    public static void setup(){
+    
+    public static void setup() throws DatabaseSetupException {
         try {
-            System.out.println("Setting up Database...");
+            logger.info("Setting up Database...");
             Connection c = connection();
             Statement stmt = c.createStatement();
 
@@ -52,17 +56,15 @@ public class Postgres {
             insertComment("rick", "cool dog m8");
             insertComment("alice", "OMG so cute!");
             c.close();
-        } catch (Exception e) {
-            System.out.println(e);
-            System.exit(1);
+        } catch (SQLException | DatabaseConnectionException e) {
+            logger.error("Setup error: ", e);
+            throw new DatabaseSetupException("Failed during database setup", e);
         }
     }
 
     // Java program to calculate MD5 hash value
-    public static String md5(String input)
-    {
+    public static String md5(String input) throws HashingException {
         try {
-
             // Static getInstance method is called with hashing MD5
             MessageDigest md = MessageDigest.getInstance("MD5");
 
@@ -74,34 +76,33 @@ public class Postgres {
             BigInteger no = new BigInteger(1, messageDigest);
 
             // Convert message digest into hex value
-            String hashtext = no.toString(16);
-            while (hashtext.length() < 32) {
-                hashtext = "0" + hashtext;
+            StringBuilder hashtextBuilder = new StringBuilder(no.toString(16));
+            while (hashtextBuilder.length() < 32) {
+                hashtextBuilder.insert(0, "0");
             }
-            return hashtext;
-        }
-
-        // For specifying wrong message digest algorithms
-        catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+            return hashtextBuilder.toString();
+        } catch (NoSuchAlgorithmException e) {
+            logger.error("MD5 algorithm error: ", e);
+            throw new HashingException("Failed to calculate MD5 hash", e);
         }
     }
 
-    private static void insertUser(String username, String password) {
-       String sql = "INSERT INTO users (user_id, username, password, created_on) VALUES (?, ?, ?, current_timestamp)";
-       PreparedStatement pStatement = null;
-       try {
-          pStatement = connection().prepareStatement(sql);
-          pStatement.setString(1, UUID.randomUUID().toString());
-          pStatement.setString(2, username);
-          pStatement.setString(3, md5(password));
-          pStatement.executeUpdate();
-       } catch(Exception e) {
-         e.printStackTrace();
-       }
+    private static void insertUser(String username, String password) throws DatabaseInsertionException {
+        String sql = "INSERT INTO users (user_id, username, password, created_on) VALUES (?, ?, ?, current_timestamp)";
+        PreparedStatement pStatement = null;
+        try {
+            pStatement = connection().prepareStatement(sql);
+            pStatement.setString(1, UUID.randomUUID().toString());
+            pStatement.setString(2, username);
+            pStatement.setString(3, md5(password));
+            pStatement.executeUpdate();
+        } catch (SQLException | DatabaseConnectionException | HashingException e) {
+            logger.error("Error inserting user: ", e);
+            throw new DatabaseInsertionException("Failed to insert user into database", e);
+        }
     }
 
-    private static void insertComment(String username, String body) {
+    private static void insertComment(String username, String body) throws DatabaseInsertionException {
         String sql = "INSERT INTO comments (id, username, body, created_on) VALUES (?, ?, ?, current_timestamp)";
         PreparedStatement pStatement = null;
         try {
@@ -110,8 +111,34 @@ public class Postgres {
             pStatement.setString(2, username);
             pStatement.setString(3, body);
             pStatement.executeUpdate();
-        } catch(Exception e) {
-            e.printStackTrace();
+        } catch (SQLException | DatabaseConnectionException e) {
+            logger.error("Error inserting comment: ", e);
+            throw new DatabaseInsertionException("Failed to insert comment into database", e);
         }
+    }
+}
+
+// Custom exception classes
+class DatabaseConnectionException extends Exception {
+    public DatabaseConnectionException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}
+
+class DatabaseSetupException extends Exception {
+    public DatabaseSetupException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}
+
+class HashingException extends Exception {
+    public HashingException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}
+
+class DatabaseInsertionException extends Exception {
+    public DatabaseInsertionException(String message, Throwable cause) {
+        super(message, cause);
     }
 }
