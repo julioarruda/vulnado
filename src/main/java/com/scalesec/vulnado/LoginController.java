@@ -1,12 +1,11 @@
 package com.scalesec.vulnado;
 
-import org.springframework.boot.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.boot.autoconfigure.*;
-import org.springframework.stereotype.*;
 import org.springframework.beans.factory.annotation.*;
 import java.io.Serializable;
+import java.util.Arrays;
 
 @RestController
 @EnableAutoConfiguration
@@ -15,25 +14,57 @@ public class LoginController {
   private String secret;
 
   @CrossOrigin(origins = "*")
-  @RequestMapping(value = "/login", method = RequestMethod.POST, produces = "application/json", consumes = "application/json")
+  @PostMapping(value = "/login", produces = "application/json", consumes = "application/json")
   LoginResponse login(@RequestBody LoginRequest input) {
-    User user = User.fetch(input.username);
-    if (Postgres.md5(input.password).equals(user.hashedPassword)) {
-      return new LoginResponse(user.token(secret));
-    } else {
-      throw new Unauthorized("Access Denied");
+    User user = User.fetch(input.getUsername());
+    try {
+      if (Postgres.md5(input.getPassword()).equals(user.hashedPassword)) {
+        return new LoginResponse(user.token(secret));
+      } else {
+        throw new Unauthorized("Access Denied");
+      }
+    } finally {
+      input.clearPassword(); // Clear password from memory
     }
   }
 }
 
 class LoginRequest implements Serializable {
-  public String username;
-  public String password;
+  private String username;
+  private char[] password; // Use char[] instead of String for password
+
+  public String getUsername() {
+    return username;
+  }
+
+  public void setUsername(String username) {
+    this.username = username;
+  }
+
+  public char[] getPassword() {
+    return password;
+  }
+
+  public void setPassword(char[] password) {
+    this.password = password;
+  }
+
+  public void clearPassword() {
+    if (this.password != null) {
+      Arrays.fill(this.password, '\0'); // Clear password from memory
+    }
+  }
 }
 
 class LoginResponse implements Serializable {
-  public String token;
+  private final String token; // Made token final
   public LoginResponse(String msg) { this.token = msg; }
+
+  public String getToken() {
+    return token; // Getter for token
+  }
+
+  // Removed the public setter for token to preserve immutability
 }
 
 @ResponseStatus(HttpStatus.UNAUTHORIZED)
