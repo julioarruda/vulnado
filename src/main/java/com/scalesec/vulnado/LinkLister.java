@@ -8,11 +8,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.io.IOException;
 import java.net.*;
-
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class LinkLister {
+
+  private static final Logger logger = Logger.getLogger(LinkLister.class.getName());
+
+  // Private constructor to prevent instantiation
+  private LinkLister() {
+    throw new UnsupportedOperationException("LinkLister is a utility class and cannot be instantiated.");
+  }
+
   public static List<String> getLinks(String url) throws IOException {
-    List<String> result = new ArrayList<String>();
+    List<String> result = new ArrayList<>();
     Document doc = Jsoup.connect(url).get();
     Elements links = doc.select("a");
     for (Element link : links) {
@@ -23,15 +32,16 @@ public class LinkLister {
 
   public static List<String> getLinksV2(String url) throws BadRequest {
     try {
-      URL aUrl= new URL(url);
+      URL aUrl = new URL(url);
       String host = aUrl.getHost();
-      System.out.println(host);
-      if (host.startsWith("172.") || host.startsWith("192.168") || host.startsWith("10.")){
+      logger.log(Level.INFO, "Host: {0}", host);
+      if (host.startsWith("172.") || host.startsWith("192.168") || host.startsWith("10.")) {
         throw new BadRequest("Use of Private IP");
       } else {
         return getLinks(url);
       }
-    } catch(Exception e) {
+    } catch (Exception e) {
+      logger.log(Level.SEVERE, "Error processing URL", e);
       throw new BadRequest(e.getMessage());
     }
   }
