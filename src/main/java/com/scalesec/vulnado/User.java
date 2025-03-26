@@ -27,13 +27,7 @@ public class User {
   public static void assertAuth(String secret, String token) {
     try {
       SecretKey key = Keys.hmacShaKeyFor(secret.getBytes());
-      Jwts.parser()
-        .setSigningKey(key)
-        .parseClaimsJws(token);
-    } catch(Exception e) {
-      e.printStackTrace();
-      throw new Unauthorized(e.getMessage());
-    }
+      Jwts.pa\a
   }
 
   public static User fetch(String un) {

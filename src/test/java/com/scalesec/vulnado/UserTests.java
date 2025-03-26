@@ -281,4 +281,60 @@ class UserTest {
         assertEquals(trimmedUsername, result.username, "Fetched user should have trimmed username");
         verify(mockStatement).executeQuery(contains("'" + trimmedUsername + "'"));
     }
+
+    @Test
+    void assertAuth_WithIncompleteImplementation_ShouldThrowException() {
+        String token = testUser.token(TEST_SECRET);
+        assertThrows(RuntimeException.class, () -> User.assertAuth(TEST_SECRET, token), 
+            "assertAuth should throw RuntimeException due to incomplete implementation");
+    }
+
+    @Test
+    void fetch_ShouldHandleNullUsername() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+
+        User result = User.fetch(null);
+
+        assertNull(result, "Fetch should return null for null username");
+        verify(mockStatement).executeQuery(contains("'null'"));
+    }
+
+    @Test
+    void fetch_ShouldHandleEmptyUsername() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+
+        User result = User.fetch("");
+
+        assertNull(result, "Fetch should return null for empty username");
+        verify(mockStatement).executeQuery(contains("''"));
+    }
+
+    @Test
+    void token_WithEmptySecret_ShouldThrowException() {
+        assertThrows(IllegalArgumentException.class, () -> testUser.token(""), 
+            "token method should throw IllegalArgumentException for empty secret");
+    }
+
+    @Test
+    void assertAuth_WithEmptySecret_ShouldThrowException() {
+        String token = testUser.token(TEST_SECRET);
+        assertThrows(IllegalArgumentException.class, () -> User.assertAuth("", token), 
+            "assertAuth should throw IllegalArgumentException for empty secret");
+    }
+
+    @Test
+    void fetch_ShouldHandleLongUsername() throws Exception {
+        String longUsername = "a".repeat(1000); // Create a very long username
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+
+        User.fetch(longUsername);
+
+        verify(mockStatement).executeQuery(contains(longUsername));
+    }
 }
