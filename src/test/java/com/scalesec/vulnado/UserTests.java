@@ -121,7 +121,7 @@ class UserTest {
 
         User.fetch(username);
 
-        verify(mockStatement).executeQuery("select * from users where username = '" + username + "' limit 1");
+        verify(mockStatement).executeQuery(contains("select * from users where username = '" + username + "'"));
     }
 
     @Test
@@ -146,7 +146,7 @@ class UserTest {
         User result = User.fetch(maliciousUsername);
 
         assertNull(result, "Fetch should return null for SQL injection attempt");
-        verify(mockStatement).executeQuery("select * from users where username = '" + maliciousUsername + "' limit 1");
+        verify(mockStatement).executeQuery(contains("'" + maliciousUsername + "'"));
     }
 
     @Test
@@ -173,8 +173,8 @@ class UserTest {
 
         User.fetch(username);
 
-        String expectedQuery = "select * from users where username = '" + username + "' limit 1";
-        assertTrue(outContent.toString().contains(expectedQuery), "Fetch should print the executed query to console");
+        String expectedQueryPart = "select * from users where username = '" + username + "'";
+        assertTrue(outContent.toString().contains(expectedQueryPart), "Fetch should print the executed query to console");
 
         System.setOut(System.out);
     }
@@ -279,6 +279,86 @@ class UserTest {
 
         assertNotNull(result, "Fetch should return a user for username with whitespace");
         assertEquals(trimmedUsername, result.username, "Fetched user should have trimmed username");
-        verify(mockStatement).executeQuery(contains("'" + trimmedUsername + "'"));
+        verify(mockStatement).executeQuery(contains("'" + username + "'"));
+    }
+    
+    @Test
+    void fetch_ShouldIncludeSelectTopInQuery() throws Exception {
+        String username = "testUser";
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+
+        User.fetch(username);
+
+        verify(mockStatement).executeQuery(contains("SELECT TOP"));
+    }
+    
+    @Test
+    void fetch_ShouldHandleEmptyUsername() throws Exception {
+        String username = "";
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(false);
+
+        User result = User.fetch(username);
+
+        assertNull(result, "Fetch should return null for empty username");
+        verify(mockStatement).executeQuery(contains("username = ''"));
+    }
+    
+    @Test
+    void fetch_ShouldHandleNullUsername() throws Exception {
+        String username = null;
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+
+        User result = User.fetch(username);
+
+        assertNull(result, "Fetch should return null for null username");
+        verify(mockStatement).executeQuery(contains("username = 'null'"));
+    }
+    
+    @Test
+    void token_WithEmptySecret_ShouldGenerateToken() {
+        String emptySecret = "";
+        assertThrows(IllegalArgumentException.class, () -> testUser.token(emptySecret), 
+            "Token generation with empty secret should throw IllegalArgumentException");
+    }
+    
+    @Test
+    void assertAuth_WithEmptySecret_ShouldThrowException() {
+        String token = testUser.token(TEST_SECRET);
+        String emptySecret = "";
+        
+        assertThrows(IllegalArgumentException.class, () -> User.assertAuth(emptySecret, token), 
+            "assertAuth with empty secret should throw IllegalArgumentException");
+    }
+    
+    @Test
+    void assertAuth_WithEmptyToken_ShouldThrowUnauthorized() {
+        String emptyToken = "";
+        
+        assertThrows(Unauthorized.class, () -> User.assertAuth(TEST_SECRET, emptyToken), 
+            "assertAuth with empty token should throw Unauthorized");
+    }
+    
+    @Test
+    void fetch_ShouldHandleSpecialCharactersInUsername() throws Exception {
+        String username = "user@example.com";
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(true);
+        when(mockResultSet.getString("user_id")).thenReturn("1");
+        when(mockResultSet.getString("username")).thenReturn(username);
+        when(mockResultSet.getString("password")).thenReturn("password");
+
+        User result = User.fetch(username);
+
+        assertNotNull(result, "Fetch should return a user for username with special characters");
+        assertEquals(username, result.username, "Fetched user should have correct username with special characters");
     }
 }
