@@ -51,6 +51,8 @@ public class User {
         String user_id = rs.getString("user_id");
         String username = rs.getString("username");
         String password = rs.getString("password");
+        System.println(username);
+        System.println(password);
         user = new User(user_id, username, password);
       }
       cxn.close();
