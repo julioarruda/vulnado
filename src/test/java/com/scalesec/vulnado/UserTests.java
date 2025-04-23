@@ -1,3 +1,4 @@
+//BEGIN: Work/DemoTestCreator/2025-04-23__17-38-53.468__GenerateTests/Input/Existing_Tests/UserTests.java
 package com.scalesec.vulnado;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -281,4 +282,95 @@ class UserTest {
         assertEquals(trimmedUsername, result.username, "Fetched user should have trimmed username");
         verify(mockStatement).executeQuery(contains("'" + trimmedUsername + "'"));
     }
+
+    // Additional tests for uncovered code and edge cases
+
+    @Test
+    void token_ShouldReturnNonNullAndNonEmptyString() {
+        String token = testUser.token(TEST_SECRET);
+        assertNotNull(token, "Token should not be null");
+        assertFalse(token.isEmpty(), "Token should not be empty");
+    }
+
+    @Test
+    void token_ShouldThrowExceptionWithNullSecret() {
+        assertThrows(NullPointerException.class, () -> testUser.token(null), "Token should throw NullPointerException if secret is null");
+    }
+
+    @Test
+    void assertAuth_WithNullToken_ShouldThrowUnauthorized() {
+        assertThrows(Unauthorized.class, () -> User.assertAuth(TEST_SECRET, null), "assertAuth should throw Unauthorized for null token");
+    }
+
+    @Test
+    void assertAuth_WithNullSecret_ShouldThrowException() {
+        String token = testUser.token(TEST_SECRET);
+        assertThrows(NullPointerException.class, () -> User.assertAuth(null, token), "assertAuth should throw NullPointerException for null secret");
+    }
+
+    @Test
+    void fetch_ShouldReturnNullIfStatementIsNull() throws Exception {
+        // Simulate createStatement() returning null
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(null);
+
+        User result = User.fetch("testUser");
+        assertNull(result, "Fetch should return null if statement is null");
+    }
+
+    @Test
+    void fetch_ShouldReturnNullIfResultSetIsNull() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(null);
+
+        User result = User.fetch("testUser");
+        assertNull(result, "Fetch should return null if result set is null");
+    }
+
+    @Test
+    void fetch_ShouldHandleNullUsername() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(false);
+
+        User result = User.fetch(null);
+        assertNull(result, "Fetch should return null if username is null");
+    }
+
+    @Test
+    void fetch_ShouldHandleEmptyUsername() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(false);
+
+        User result = User.fetch("");
+        assertNull(result, "Fetch should return null if username is empty");
+    }
+
+    @Test
+    void fetch_ShouldPrintUsernameAndPasswordToConsole() throws Exception {
+        String username = "consoleUser";
+        String password = "consolePass";
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(true);
+        when(mockResultSet.getString("user_id")).thenReturn("1");
+        when(mockResultSet.getString("username")).thenReturn(username);
+        when(mockResultSet.getString("password")).thenReturn(password);
+
+        ByteArrayOutputStream outContent = new ByteArrayOutputStream();
+        System.setOut(new PrintStream(outContent));
+
+        User.fetch(username);
+
+        assertTrue(outContent.toString().contains(username), "Fetch should print username to console");
+        assertTrue(outContent.toString().contains(password), "Fetch should print password to console");
+
+        System.setOut(System.out);
+    }
 }
+//END: Work/DemoTestCreator/2025-04-23__17-38-53.468__GenerateTests/Input/Existing_Tests/UserTests.java
