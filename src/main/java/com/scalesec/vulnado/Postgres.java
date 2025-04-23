@@ -8,12 +8,13 @@ import java.security.NoSuchAlgorithmException;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.UUID;
+import java.util.logging.Logger;
 
+    private static final Logger LOGGER = Logger.getLogger(Postgres.class.getName());
 public class Postgres {
 
     public static Connection connection() {
         try {
-            Class.forName("org.postgresql.Driver");
             String url = new StringBuilder()
                     .append("jdbc:postgresql://")
                     .append(System.getenv("PGHOST"))
@@ -22,15 +23,15 @@ public class Postgres {
             return DriverManager.getConnection(url,
                     System.getenv("PGUSER"), System.getenv("PGPASSWORD"));
         } catch (Exception e) {
-            e.printStackTrace();
-            System.err.println(e.getClass().getName()+": "+e.getMessage());
+            LOGGER.severe(e.toString());
+            LOGGER.severe(e.getClass().getName() + ": " + e.getMessage());
             System.exit(1);
         }
         return null;
     }
     public static void setup(){
         try {
-            System.out.println("Setting up Database...");
+            LOGGER.info("Setting up Database...");
             Connection c = connection();
             Statement stmt = c.createStatement();
 
@@ -53,7 +54,7 @@ public class Postgres {
             insertComment("alice", "OMG so cute!");
             c.close();
         } catch (Exception e) {
-            System.out.println(e);
+            LOGGER.severe(e.toString());
             System.exit(1);
         }
     }
@@ -84,21 +85,22 @@ public class Postgres {
         // For specifying wrong message digest algorithms
         catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
-        }
+        // Use StringBuilder instead of StringBuffer
     }
 
     private static void insertUser(String username, String password) {
        String sql = "INSERT INTO users (user_id, username, password, created_on) VALUES (?, ?, ?, current_timestamp)";
        PreparedStatement pStatement = null;
        try {
-          pStatement = connection().prepareStatement(sql);
-          pStatement.setString(1, UUID.randomUUID().toString());
-          pStatement.setString(2, username);
-          pStatement.setString(3, md5(password));
-          pStatement.executeUpdate();
-       } catch(Exception e) {
-         e.printStackTrace();
-       }
+              pStatement = connection().prepareStatement(sql);
+          try {
+              pStatement.setString(1, UUID.randomUUID().toString());
+              pStatement.setString(2, username);
+              pStatement.setString(3, md5(password));
+              pStatement.executeUpdate();
+          } catch(Exception e) {
+              LOGGER.severe(e.toString());
+          }
     }
 
     private static void insertComment(String username, String body) {
@@ -110,7 +112,7 @@ public class Postgres {
             pStatement.setString(2, username);
             pStatement.setString(3, body);
             pStatement.executeUpdate();
-        } catch(Exception e) {
+            LOGGER.severe(e.toString());
             e.printStackTrace();
         }
     }
