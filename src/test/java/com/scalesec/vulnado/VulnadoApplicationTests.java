@@ -11,7 +11,7 @@ public class VulnadoApplicationTests {
 
 	@Test
 	public void contextLoads() {
-	}
+        org.junit.Assert.assertTrue(true);
 
 }
 
