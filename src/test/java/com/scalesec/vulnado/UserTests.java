@@ -1,3 +1,4 @@
+//BEGIN: Work/DemoTestCreator/2025-04-23__18-09-56.818__GenerateTests/Input/Existing_Tests/UserTests.java
 package com.scalesec.vulnado;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -282,3 +283,139 @@ class UserTest {
         verify(mockStatement).executeQuery(contains("'" + trimmedUsername + "'"));
     }
 }
+
+//END: Work/DemoTestCreator/2025-04-23__18-09-56.818__GenerateTests/Input/Existing_Tests/UserTests.java
+
+// BEGIN: Additional tests for uncovered/edge cases
+
+package com.scalesec.vulnado;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+class UserAdditionalTest {
+
+    @Mock
+    private Connection mockConnection;
+    @Mock
+    private Statement mockStatement;
+    @Mock
+    private ResultSet mockResultSet;
+
+    private static final String TEST_SECRET = "testSecretKeyForJWTTesting";
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+    }
+
+    @Test
+    void token_ShouldThrowException_WhenSecretIsTooShort() {
+        User user = new User("1", "user", "pass");
+        String shortSecret = "short";
+        assertThrows(Exception.class, () -> user.token(shortSecret), "Should throw exception for short secret");
+    }
+
+    @Test
+    void assertAuth_ShouldThrowUnauthorized_WhenSecretIsWrong() {
+        User user = new User("1", "user", "pass");
+        String token = user.token(TEST_SECRET);
+        String wrongSecret = "anotherSecretKeyForJWTTesting";
+        assertThrows(Unauthorized.class, () -> User.assertAuth(wrongSecret, token), "Should throw Unauthorized for wrong secret");
+    }
+
+    @Test
+    void fetch_ShouldReturnNull_WhenCreateStatementThrows() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenThrow(new RuntimeException("Statement error"));
+        User result = User.fetch("user");
+        assertNull(result, "Should return null if createStatement throws");
+    }
+
+    @Test
+    void fetch_ShouldReturnNull_WhenExecuteQueryThrows() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenThrow(new RuntimeException("Query error"));
+        User result = User.fetch("user");
+        assertNull(result, "Should return null if executeQuery throws");
+    }
+
+    @Test
+    void fetch_ShouldReturnNull_WhenResultSetThrowsOnNext() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenThrow(new RuntimeException("ResultSet error"));
+        User result = User.fetch("user");
+        assertNull(result, "Should return null if ResultSet.next throws");
+    }
+
+    @Test
+    void fetch_ShouldReturnNull_WhenResultSetThrowsOnGetString() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(true);
+        when(mockResultSet.getString(anyString())).thenThrow(new RuntimeException("GetString error"));
+        User result = User.fetch("user");
+        assertNull(result, "Should return null if ResultSet.getString throws");
+    }
+
+    @Test
+    void fetch_ShouldReturnNull_WhenUsernameIsNull() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(true);
+        when(mockResultSet.getString("user_id")).thenReturn("1");
+        when(mockResultSet.getString("username")).thenReturn(null);
+        when(mockResultSet.getString("password")).thenReturn("password");
+        User result = User.fetch(null);
+        assertNull(result, "Should return null if username is null");
+    }
+
+    @Test
+    void fetch_ShouldReturnNull_WhenPasswordIsNull() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(true);
+        when(mockResultSet.getString("user_id")).thenReturn("1");
+        when(mockResultSet.getString("username")).thenReturn("user");
+        when(mockResultSet.getString("password")).thenReturn(null);
+        User result = User.fetch("user");
+        assertNull(result, "Should return null if password is null");
+    }
+
+    @Test
+    void fetch_ShouldReturnNull_WhenUserIdIsNull() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(true);
+        when(mockResultSet.getString("user_id")).thenReturn(null);
+        when(mockResultSet.getString("username")).thenReturn("user");
+        when(mockResultSet.getString("password")).thenReturn("password");
+        User result = User.fetch("user");
+        assertNull(result, "Should return null if user_id is null");
+    }
+
+    @Test
+    void token_ShouldReturnDifferentTokensForSameUserWithDifferentSecrets() {
+        User user = new User("1", "user", "pass");
+        String token1 = user.token("secret1secret1secret1secret1secret1");
+        String token2 = user.token("secret2secret2secret2secret2secret2");
+        assertNotEquals(token1, token2, "Tokens should differ for different secrets");
+    }
+}
+// END: Additional tests for uncovered/edge cases
