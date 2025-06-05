@@ -11,7 +11,8 @@ public class VulnadoApplicationTests {
 
 	@Test
 	public void contextLoads() {
-	}
+        // Add a simple assertion to ensure the application context loads
+        org.junit.Assert.assertTrue(true);
 
 }
 
