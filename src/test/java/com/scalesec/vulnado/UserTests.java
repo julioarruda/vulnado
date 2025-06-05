@@ -1,3 +1,4 @@
+//BEGIN: /configuration/Work/DemoTestCreator/2025-06-05__20-36-35.600__GenerateTests/Input/Existing_Tests/UserTests.java
 package com.scalesec.vulnado;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -281,4 +282,119 @@ class UserTest {
         assertEquals(trimmedUsername, result.username, "Fetched user should have trimmed username");
         verify(mockStatement).executeQuery(contains("'" + trimmedUsername + "'"));
     }
+
+    // Additional tests for uncovered code and edge cases
+
+    @Test
+    void token_ShouldReturnNonNullAndNonEmptyString() {
+        String token = testUser.token(TEST_SECRET);
+        assertNotNull(token, "Token should not be null");
+        assertFalse(token.isEmpty(), "Token should not be empty");
+    }
+
+    @Test
+    void assertAuth_WithNullToken_ShouldThrowUnauthorized() {
+        assertThrows(Unauthorized.class, () -> User.assertAuth(TEST_SECRET, null), "assertAuth should throw Unauthorized for null token");
+    }
+
+    @Test
+    void assertAuth_WithEmptyToken_ShouldThrowUnauthorized() {
+        assertThrows(Unauthorized.class, () -> User.assertAuth(TEST_SECRET, ""), "assertAuth should throw Unauthorized for empty token");
+    }
+
+    @Test
+    void fetch_WithNullUsername_ShouldReturnNull() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(false);
+
+        User result = User.fetch(null);
+
+        assertNull(result, "Fetch should return null for null username");
+    }
+
+    @Test
+    void fetch_WithEmptyUsername_ShouldReturnNull() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(false);
+
+        User result = User.fetch("");
+
+        assertNull(result, "Fetch should return null for empty username");
+    }
+
+    @Test
+    void fetch_ShouldNotThrowExceptionWhenClosingConnectionFails() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        doThrow(new RuntimeException("Close failed")).when(mockConnection).close();
+
+        // Should not throw, just print stack trace
+        assertDoesNotThrow(() -> User.fetch("testUser"), "Fetch should not throw when connection close fails");
+    }
+
+    @Test
+    void fetch_ShouldReturnUserWithCorrectFields() throws Exception {
+        String username = "userA";
+        String userId = "42";
+        String password = "pwA";
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(true);
+        when(mockResultSet.getString("user_id")).thenReturn(userId);
+        when(mockResultSet.getString("username")).thenReturn(username);
+        when(mockResultSet.getString("password")).thenReturn(password);
+
+        User result = User.fetch(username);
+
+        assertNotNull(result, "Fetch should return a user object");
+        assertEquals(userId, result.id, "User id should match");
+        assertEquals(username, result.username, "Username should match");
+        assertEquals(password, result.hashedPassword, "Password should match");
+    }
+
+    @Test
+    void token_ShouldThrowExceptionForShortSecret() {
+        String shortSecret = "short";
+        assertThrows(Exception.class, () -> testUser.token(shortSecret), "Token generation should throw for short secret");
+    }
+
+    @Test
+    void assertAuth_WithShortSecret_ShouldThrowUnauthorized() {
+        String shortSecret = "short";
+        String token = testUser.token(TEST_SECRET);
+        assertThrows(Unauthorized.class, () -> User.assertAuth(shortSecret, token), "assertAuth should throw Unauthorized for short secret");
+    }
+
+    @Test
+    void fetch_ShouldReturnNullIfResultSetThrowsException() throws Exception {
+        String username = "userB";
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenThrow(new RuntimeException("ResultSet error"));
+
+        User result = User.fetch(username);
+
+        assertNull(result, "Fetch should return null if ResultSet throws exception");
+    }
+
+    @Test
+    void fetch_ShouldReturnNullIfGetStringThrowsException() throws Exception {
+        String username = "userC";
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(true);
+        when(mockResultSet.getString("user_id")).thenThrow(new RuntimeException("getString error"));
+
+        User result = User.fetch(username);
+
+        assertNull(result, "Fetch should return null if getString throws exception");
+    }
 }
+//END: /configuration/Work/DemoTestCreator/2025-06-05__20-36-35.600__GenerateTests/Input/Existing_Tests/UserTests.java
