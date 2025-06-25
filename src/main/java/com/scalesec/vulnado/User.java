@@ -12,7 +12,7 @@ import javax.crypto.SecretKey;
 public class User {
   public String id, username, hashedPassword;
 
-  public User(String id, String username, String hashedPassword) {
+  public User(String id, String username, S
     this.id = id;
     this.username = username;
     this.hashedPassword = hashedPassword;
