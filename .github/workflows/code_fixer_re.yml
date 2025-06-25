@@ -18,25 +18,27 @@ jobs:
       - name: Authenticate with Keycloak
         id: keycloak_auth
         run: |
-          TOKEN_RESPONSE=$(curl -s -X POST 'https://auth.dev.br.ai-impact.gft-cloud.com/realms/ai-impact/protocol/openid-connect/token' \
+          TOKEN_RESPONSE=$(curl -s -X POST 'https://auth.${{ vars.INSTANCE }}/realms/ai-impact/protocol/openid-connect/token' \
             -H 'Content-Type: application/x-www-form-urlencoded' \
-            -d 'client_id=ai-impact-devops' \
-            -d 'client_secret=${{ secrets.CLIENT_SECRET }}' \
-            -d 'grant_type=client_credentials')
+            -d 'client_id=ai-impact-client' \
+            -d 'grant_type=password' \
+            -d 'username=${{ secrets.KEYCLOAK_USERNAME }}' \
+            -d 'password=${{ secrets.KEYCLOAK_PASSWORD }}')
+          
           ACCESS_TOKEN=$(echo $TOKEN_RESPONSE | jq -r '.access_token')
-
+          
           if [ -z "$ACCESS_TOKEN" ] || [ "$ACCESS_TOKEN" == "null" ]; then
             echo "Failed to obtain access token"
             echo "$TOKEN_RESPONSE"
             exit 1
           fi
-
+          
           echo "access_token=$ACCESS_TOKEN" >> $GITHUB_ENV
 
       - name: Prepare and Send for Code Fix
         id: send_code_fix
         run: |
-          RESPONSE=$(curl --location 'https://api.dev.br.ai-impact.gft-cloud.com/ai/fix' \
+          RESPONSE=$(curl --location 'https://api.${{ vars.INSTANCE }}/ai/fix' \
             --header "Authorization: Bearer ${{ env.access_token }}" \
             --form 'RunName="code_reviewer"' \
             --form 'SastName="Sonar_Cloud"' \
@@ -75,7 +77,7 @@ jobs:
           JOB_ID=${{ env.job_id }}
           STATUS="Pending"
           while [[ "$STATUS" != "Completed" ]]; do
-            RESPONSE=$(curl --location "https://api.dev.br.ai-impact.gft-cloud.com/ai/jobs/$JOB_ID/status" \
+            RESPONSE=$(curl --location "https://api.${{ vars.INSTANCE }}/ai/jobs/$JOB_ID/status" \
               --header "Authorization: Bearer ${{ env.access_token }}")
             STATUS=$(echo $RESPONSE | jq -r '.status')
             echo "Current status: $STATUS"
