@@ -44,23 +44,7 @@ public class Comment {
       ResultSet rs = stmt.executeQuery(query);
       while (rs.next()) {
         String id = rs.getString("id");
-        String username = rs.getString("username");
-        String body = rs.getString("body");
-        Timestamp created_on = rs.getTimestamp("created_on");
-        Comment c = new Comment(id, username, body, created_on);
-        comments.add(c);
-      }
-      cxn.close();
-    } catch (Exception e) {
-      e.printStackTrace();
-      System.err.println(e.getClass().getName()+": "+e.getMessage());
-    } finally {
-      return comments;
-    }
-  }
 
-  public static Boolean delete(String id) {
-    try {
       String sql = "DELETE FROM comments where id = ?";
       Connection con = Postgres.connection();
       PreparedStatement pStatement = con.prepareStatement(sql);
