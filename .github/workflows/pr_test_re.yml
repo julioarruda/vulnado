@@ -19,19 +19,21 @@ jobs:
       - name: Authenticate with Keycloak
         id: keycloak_auth
         run: |
-          TOKEN_RESPONSE=$(curl -s -X POST 'https://auth.dev.br.ai-impact.gft-cloud.com/realms/ai-impact/protocol/openid-connect/token' \
+          TOKEN_RESPONSE=$(curl -s -X POST 'https://auth.${{ vars.INSTANCE }}/realms/ai-impact/protocol/openid-connect/token' \
             -H 'Content-Type: application/x-www-form-urlencoded' \
-            -d 'client_id=ai-impact-devops' \
-            -d 'client_secret=${{ secrets.CLIENT_SECRET }}' \
-            -d 'grant_type=client_credentials')
+            -d 'client_id=ai-impact-client' \
+            -d 'grant_type=password' \
+            -d 'username=${{ secrets.KEYCLOAK_USERNAME }}' \
+            -d 'password=${{ secrets.KEYCLOAK_PASSWORD }}')
+          
           ACCESS_TOKEN=$(echo $TOKEN_RESPONSE | jq -r '.access_token')
-
+          
           if [ -z "$ACCESS_TOKEN" ] || [ "$ACCESS_TOKEN" == "null" ]; then
             echo "Failed to obtain access token"
             echo "$TOKEN_RESPONSE"
             exit 1
           fi
-
+          
           echo "access_token=$ACCESS_TOKEN" >> $GITHUB_ENV
 
       - name: Checkout the branch
@@ -74,7 +76,7 @@ jobs:
             if [ -f "$TEST_FILE" ]; then
               FILES="$FILES --form ExistingTests=@$TEST_FILE"
             fi
-            RESPONSE=$(curl --location 'https://api.dev.br.ai-impact.gft-cloud.com/ai/test' \
+            RESPONSE=$(curl --location 'https://api.${{ vars.INSTANCE }}/ai/test' \
               --header "Authorization: Bearer ${{ env.access_token }}" \
               --form "RunName=GenerateTests" \
               $FILES \
@@ -98,7 +100,7 @@ jobs:
           JOB_ID=${{ env.job_id }}
           STATUS="Pending"
           while [[ "$STATUS" != "Completed" ]]; do
-            RESPONSE=$(curl --location "https://api.dev.br.ai-impact.gft-cloud.com/ai/jobs/$JOB_ID/status" \
+            RESPONSE=$(curl --location "https://api.${{ vars.INSTANCE }}/ai/jobs/$JOB_ID/status" \
               --header "Authorization: Bearer ${{ env.access_token }}")
             STATUS=$(echo $RESPONSE | jq -r '.status')
             echo "Current status: $STATUS"
@@ -113,7 +115,7 @@ jobs:
         run: |
           OUTPUT_URIS=${{ env.output_uris }}
           for uri in $OUTPUT_URIS; do
-            FILE_URL="https://api.dev.br.ai-impact.gft-cloud.com${uri}"
+            FILE_URL="https://api.${{ vars.INSTANCE }}${uri}"
             FILE_CONTENT=$(curl --location $FILE_URL --header "Authorization: Bearer ${{ env.access_token }}")
             CLASS_NAME=$(basename "${uri}" .java)
             TEST_FILE="src/test/java/com/scalesec/vulnado/${CLASS_NAME}Tests.java"
@@ -136,7 +138,7 @@ jobs:
           for FILE in ${{ env.java_files }}; do
             CLASS_NAME=$(basename "$FILE" .java)
             FILES="--form files=@$FILE"
-            RESPONSE=$(curl --location 'https://api.dev.br.ai-impact.gft-cloud.com/ai/document' \
+            RESPONSE=$(curl --location 'https://api.${{ vars.INSTANCE }}/ai/document' \
               --header "Authorization: Bearer ${{ env.access_token }}" \
               --form "RunName=GenerateDocPR" \
               $FILES \
@@ -160,7 +162,7 @@ jobs:
           JOB_ID=${{ env.job_id }}
           STATUS="Pending"
           while [[ "$STATUS" != "Completed" ]]; do
-            RESPONSE=$(curl --location "https://api.dev.br.ai-impact.gft-cloud.com/ai/jobs/$JOB_ID/status" \
+            RESPONSE=$(curl --location "https://api.${{ vars.INSTANCE }}/ai/jobs/$JOB_ID/status" \
               --header "Authorization: Bearer ${{ env.access_token }}")
             STATUS=$(echo $RESPONSE | jq -r '.status')
             echo "Current status: $STATUS"
@@ -175,7 +177,7 @@ jobs:
         run: |
           OUTPUT_URIS=${{ env.output_uris }}
           for uri in $OUTPUT_URIS; do
-            FILE_URL="https://api.dev.br.ai-impact.gft-cloud.com${uri}"
+            FILE_URL="https://api.${{ vars.INSTANCE }}${uri}"
             FILE_CONTENT=$(curl --location $FILE_URL --header "Authorization: Bearer ${{ env.access_token }}")
             CLASS_NAME=$(basename "${uri}" .java)
             TEST_FILE="wiki/src/main/java/com/scalesec/vulnado/${CLASS_NAME}"
@@ -203,7 +205,7 @@ jobs:
       - name: Prepare and Send for Code Review
         id: send_code_review
         run: |
-          RESPONSE=$(curl --location 'https://api.dev.br.ai-impact.gft-cloud.com/ai/review' \
+          RESPONSE=$(curl --location 'https://api.${{ vars.INSTANCE }}/ai/review' \
             --header "Authorization: Bearer ${{ env.access_token }}" \
             --form 'RunName="CodeReview"' \
             --form 'jobName="DemoCodeReviewerGithub"' \
@@ -223,7 +225,7 @@ jobs:
           JOB_ID=${{ env.job_id }}
           STATUS="Pending"
           while [[ "$STATUS" != "Completed" ]]; do
-            RESPONSE=$(curl --location "https://api.dev.br.ai-impact.gft-cloud.com/ai/jobs/$JOB_ID/status" \
+            RESPONSE=$(curl --location "https://api.${{ vars.INSTANCE }}/ai/jobs/$JOB_ID/status" \
               --header "Authorization: Bearer ${{ env.access_token }}")
             STATUS=$(echo $RESPONSE | jq -r '.status')
             echo "Current status: $STATUS"
