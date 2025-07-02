@@ -281,4 +281,144 @@ class UserTest {
         assertEquals(trimmedUsername, result.username, "Fetched user should have trimmed username");
         verify(mockStatement).executeQuery(contains("'" + trimmedUsername + "'"));
     }
+    
+    @Test
+    void token_WithEmptySecret_ShouldStillGenerateToken() {
+        String emptySecret = "";
+        String token = testUser.token(emptySecret);
+        
+        assertNotNull(token, "Token should be generated even with empty secret");
+        assertTrue(token.split("\\.").length == 3, "Token should have three parts separated by dots");
+    }
+    
+    @Test
+    void token_WithNullUsername_ShouldGenerateTokenWithNullSubject() {
+        User userWithNullUsername = new User("1", null, "password");
+        String token = userWithNullUsername.token(TEST_SECRET);
+        
+        SecretKey key = Keys.hmacShaKeyFor(TEST_SECRET.getBytes());
+        String subject = Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody().getSubject();
+        
+        assertNull(subject, "Token should have null subject when username is null");
+    }
+    
+    @Test
+    void token_WithLongSecret_ShouldGenerateValidToken() {
+        String longSecret = "ThisIsAVeryLongSecretKeyThatExceedsTheNormalLengthOfSecretsToTestHowTheSystemHandlesLongSecrets";
+        String token = testUser.token(longSecret);
+        
+        assertNotNull(token, "Token should be generated with long secret");
+        assertTrue(token.split("\\.").length == 3, "Token should have three parts separated by dots");
+    }
+    
+    @Test
+    void token_WithSpecialCharactersInSecret_ShouldGenerateValidToken() {
+        String specialSecret = "!@#$%^&*()_+-=[]{}|;':\",./<>?";
+        String token = testUser.token(specialSecret);
+        
+        assertNotNull(token, "Token should be generated with special characters in secret");
+        assertTrue(token.split("\\.").length == 3, "Token should have three parts separated by dots");
+    }
+    
+    @Test
+    void token_WithSpecialCharactersInUsername_ShouldGenerateValidToken() {
+        User userWithSpecialChars = new User("1", "user!@#$%^&*()", "password");
+        String token = userWithSpecialChars.token(TEST_SECRET);
+        
+        SecretKey key = Keys.hmacShaKeyFor(TEST_SECRET.getBytes());
+        String subject = Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody().getSubject();
+        
+        assertEquals("user!@#$%^&*()", subject, "Token should preserve special characters in username");
+    }
+    
+    @Test
+    void fetch_WithNullUsername_ShouldHandleNullPointerException() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        
+        User result = User.fetch(null);
+        
+        assertNull(result, "Fetch should return null when username is null");
+    }
+    
+    @Test
+    void fetch_ShouldHandleStatementCreationFailure() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenThrow(new RuntimeException("Statement creation failed"));
+        
+        ByteArrayOutputStream errContent = new ByteArrayOutputStream();
+        System.setErr(new PrintStream(errContent));
+        
+        User result = User.fetch("testUser");
+        
+        assertNull(result, "Fetch should return null when statement creation fails");
+        assertTrue(errContent.toString().contains("Statement creation failed"), 
+                "Error message should contain the exception message");
+        
+        System.setErr(System.err);
+    }
+    
+    @Test
+    void fetch_ShouldHandleResultSetExecutionFailure() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenThrow(new RuntimeException("ResultSet execution failed"));
+        
+        ByteArrayOutputStream errContent = new ByteArrayOutputStream();
+        System.setErr(new PrintStream(errContent));
+        
+        User result = User.fetch("testUser");
+        
+        assertNull(result, "Fetch should return null when ResultSet execution fails");
+        assertTrue(errContent.toString().contains("ResultSet execution failed"), 
+                "Error message should contain the exception message");
+        
+        System.setErr(System.err);
+    }
+    
+    @Test
+    void fetch_ShouldHandleConnectionCloseFailure() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        doThrow(new RuntimeException("Connection close failed")).when(mockConnection).close();
+        
+        ByteArrayOutputStream errContent = new ByteArrayOutputStream();
+        System.setErr(new PrintStream(errContent));
+        
+        User result = User.fetch("testUser");
+        
+        assertNotNull(result, "Fetch should still return user when connection close fails");
+        assertTrue(errContent.toString().contains("Connection close failed"), 
+                "Error message should contain the exception message");
+        
+        System.setErr(System.err);
+    }
+    
+    @Test
+    void fetch_ShouldHandleEmptyUsername() throws Exception {
+        String emptyUsername = "";
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
+        when(mockResultSet.next()).thenReturn(false);
+        
+        User result = User.fetch(emptyUsername);
+        
+        assertNull(result, "Fetch should return null for empty username");
+        verify(mockStatement).executeQuery("select * from users where username = '' limit 1");
+    }
+    
+    @Test
+    void constructor_ShouldCreateUserWithCorrectValues() {
+        String id = "123";
+        String username = "testUsername";
+        String hashedPassword = "hashedTestPassword";
+        
+        User user = new User(id, username, hashedPassword);
+        
+        assertEquals(id, user.id, "User should have the correct id");
+        assertEquals(username, user.username, "User should have the correct username");
+        assertEquals(hashedPassword, user.hashedPassword, "User should have the correct hashedPassword");
+    }
 }
