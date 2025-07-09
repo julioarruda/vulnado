@@ -23,12 +23,14 @@ public class CommentsController {
   @CrossOrigin(origins = "*")
   @RequestMapping(value = "/comments", method = RequestMethod.POST, produces = "application/json", consumes = "application/json")
   Comment createComment(@RequestHeader(value="x-auth-token") String token, @RequestBody CommentRequest input) {
+    User.assertAuth(secret, token);
     return Comment.create(input.username, input.body);
   }
 
   @CrossOrigin(origins = "*")
   @RequestMapping(value = "/comments/{id}", method = RequestMethod.DELETE, produces = "application/json")
   Boolean deleteComment(@RequestHeader(value="x-auth-token") String token, @PathVariable("id") String id) {
+    User.assertAuth(secret, token);
     return Comment.delete(id);
   }
 }

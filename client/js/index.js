@@ -27,9 +27,14 @@ $(document).ready(function(){
     $.get("http://localhost:8080/comments", function(data){
       $('#comments-container').html('')
       data.forEach(function(comment){
-        if (comment.body.indexOf("<script>") < 0) {
-          $("#comments-container").append(template(comment));
-        }
+        // Improved XSS protection - sanitize HTML content
+        var safeComment = {
+          id: comment.id,
+          username: $('<div>').text(comment.username).html(), // HTML encode username
+          body: $('<div>').text(comment.body).html(), // HTML encode body to prevent XSS
+          created_on: comment.created_on
+        };
+        $("#comments-container").append(template(safeComment));
       });
       setupDeleteCommentHandler();
     });

@@ -58,13 +58,12 @@ public class Postgres {
         }
     }
 
-    // Java program to calculate MD5 hash value
-    public static String md5(String input)
+    // Java program to calculate SHA-256 hash value
+    public static String sha256(String input)
     {
         try {
-
-            // Static getInstance method is called with hashing MD5
-            MessageDigest md = MessageDigest.getInstance("MD5");
+            // Static getInstance method is called with hashing SHA-256
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
 
             // digest() method is called to calculate message digest
             //  of an input digest() return array of byte
@@ -75,7 +74,7 @@ public class Postgres {
 
             // Convert message digest into hex value
             String hashtext = no.toString(16);
-            while (hashtext.length() < 32) {
+            while (hashtext.length() < 64) {
                 hashtext = "0" + hashtext;
             }
             return hashtext;
@@ -87,6 +86,13 @@ public class Postgres {
         }
     }
 
+    // Legacy MD5 method for backward compatibility during migration
+    public static String md5(String input)
+    {
+        // For new implementations, use SHA-256 instead
+        return sha256(input);
+    }
+
     private static void insertUser(String username, String password) {
        String sql = "INSERT INTO users (user_id, username, password, created_on) VALUES (?, ?, ?, current_timestamp)";
        PreparedStatement pStatement = null;
@@ -94,7 +100,7 @@ public class Postgres {
           pStatement = connection().prepareStatement(sql);
           pStatement.setString(1, UUID.randomUUID().toString());
           pStatement.setString(2, username);
-          pStatement.setString(3, md5(password));
+          pStatement.setString(3, sha256(password));
           pStatement.executeUpdate();
        } catch(Exception e) {
          e.printStackTrace();
