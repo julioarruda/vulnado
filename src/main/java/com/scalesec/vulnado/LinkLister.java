@@ -23,14 +23,29 @@ public class LinkLister {
 
   public static List<String> getLinksV2(String url) throws BadRequest {
     try {
-      URL aUrl= new URL(url);
+      URL aUrl = new URL(url);
       String host = aUrl.getHost();
-      System.out.println(host);
-      if (host.startsWith("172.") || host.startsWith("192.168") || host.startsWith("10.")){
-        throw new BadRequest("Use of Private IP");
-      } else {
-        return getLinks(url);
+      String protocol = aUrl.getProtocol();
+      
+      System.out.println("Checking URL: " + url + ", Host: " + host + ", Protocol: " + protocol);
+      
+      // Only allow HTTP and HTTPS protocols
+      if (!protocol.equals("http") && !protocol.equals("https")) {
+        throw new BadRequest("Only HTTP and HTTPS protocols are allowed");
       }
+      
+      // Block private IP ranges and localhost
+      if (host.startsWith("172.") || host.startsWith("192.168") || host.startsWith("10.") || 
+          host.equals("localhost") || host.equals("127.0.0.1") || host.startsWith("169.254")) {
+        throw new BadRequest("Use of Private IP or localhost is not allowed");
+      }
+      
+      // Block common internal hostnames
+      if (host.contains("internal") || host.contains("local") || host.contains("private")) {
+        throw new BadRequest("Internal hostnames are not allowed");
+      }
+      
+      return getLinks(url);
     } catch(Exception e) {
       throw new BadRequest(e.getMessage());
     }
