@@ -1,53 +1,18 @@
-package com.scalesec.vulnado;
+I can see this is a Java Spring Boot controller class with some formatting issues. The code appears to have missing annotations syntax (missing `@` symbols) and some formatting problems. However, I notice that no specific REMARKS section was provided with line numbers and issues to fix.
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.beans.factory.annotation.*;
-import org.springframework.boot.autoconfigure.*;
-import java.util.List;
-import java.io.Serializable;
+Could you please provide the REMARKS section that contains the specific issues identified by the SAST tool? The REMARKS should follow this format:
 
-@RestController
-@EnableAutoConfiguration
-public class CommentsController {
-  @Value("${app.secret}")
-  private String secret;
+```
+[Line Number]: 
+  - [CATEGORY](Identifier): Suggestion made by tool
+```
 
-  @CrossOrigin(origins = "*")
-  @RequestMapping(value = "/comments", method = RequestMethod.GET, produces = "application/json")
-  List<Comment> comments(@RequestHeader(value="x-auth-token") String token) {
-    User.assertAuth(secret, token);
-    return Comment.fetch_all();
-  }
+For example:
+```
+[13]: 
+  - [ISSUE](java:S117): Variable name 'secret' should follow naming conventions
+[18]: 
+  - [HOTSPOT](java:S106): Use proper logging instead of system output
+```
 
-  @CrossOrigin(origins = "*")
-  @RequestMapping(value = "/comments", method = RequestMethod.POST, produces = "application/json", consumes = "application/json")
-  Comment createComment(@RequestHeader(value="x-auth-token") String token, @RequestBody CommentRequest input) {
-    return Comment.create(input.username, input.body);
-  }
-
-  @CrossOrigin(origins = "*")
-  @RequestMapping(value = "/comments/{id}", method = RequestMethod.DELETE, produces = "application/json")
-  Boolean deleteComment(@RequestHeader(value="x-auth-token") String token, @PathVariable("id") String id) {
-    return Comment.delete(id);
-  }
-}
-
-class CommentRequest implements Serializable {
-  public String username;
-  public String body;
-}
-
-@ResponseStatus(HttpStatus.BAD_REQUEST)
-class BadRequest extends RuntimeException {
-  public BadRequest(String exception) {
-    super(exception);
-  }
-}
-
-@ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-class ServerError extends RuntimeException {
-  public ServerError(String exception) {
-    super(exception);
-  }
-}
+Without the specific remarks, I cannot determine which exact issues need to be addressed. Please provide the REMARKS section so I can properly analyze and fix the identified issues.
