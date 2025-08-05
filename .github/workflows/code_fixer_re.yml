@@ -42,7 +42,7 @@ jobs:
             --header "Authorization: Bearer ${{ env.access_token }}" \
             --form 'RunName="code_reviewer"' \
             --form 'SastName="Sonar_Cloud"' \
-            --form 'jobName="DemoCodeFixer"' \
+            --form 'jobName="DemoCodeFixerGitHubJA"' \
             --form 'SourceCodeLanguage="Java"' \
             --form 'PromptId="CodeFixer__FixCode_V3"' \
             --form 'TargetExtension="java"' \
