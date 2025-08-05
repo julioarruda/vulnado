@@ -1,10 +1,8 @@
 package com.scalesec.vulnado;
 
-import org.springframework.boot.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.boot.autoconfigure.*;
-import org.springframework.stereotype.*;
 import org.springframework.beans.factory.annotation.*;
 import java.io.Serializable;
 
@@ -14,8 +12,8 @@ public class LoginController {
   @Value("${app.secret}")
   private String secret;
 
-  @CrossOrigin(origins = "*")
-  @RequestMapping(value = "/login", method = RequestMethod.POST, produces = "application/json", consumes = "application/json")
+  @CrossOrigin(origins = "*") // CORS enabled - ensure this is safe for your security requirements
+  @PostMapping(value = "/login", produces = "application/json", consumes = "application/json")
   LoginResponse login(@RequestBody LoginRequest input) {
     User user = User.fetch(input.username);
     if (Postgres.md5(input.password).equals(user.hashedPassword)) {
@@ -27,12 +25,12 @@ public class LoginController {
 }
 
 class LoginRequest implements Serializable {
-  public String username;
-  public String password;
+    private String username;
+    private String password;
 }
 
 class LoginResponse implements Serializable {
-  public String token;
+    private String token;
   public LoginResponse(String msg) { this.token = msg; }
 }
 
