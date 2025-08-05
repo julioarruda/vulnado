@@ -281,4 +281,89 @@ class UserTest {
         assertEquals(trimmedUsername, result.username, "Fetched user should have trimmed username");
         verify(mockStatement).executeQuery(contains("'" + trimmedUsername + "'"));
     }
-}
+
+    @Test
+    void constructor_ShouldInitializeAllFields() {
+        String id = "123";
+        String username = "testUser";
+        String hashedPassword = "hashedPass123";
+
+        User user = new User(id, username, hashedPassword);
+
+        assertEquals(id, user.id, "Constructor should set id correctly");
+        assertEquals(username, user.username, "Constructor should set username correctly");
+        assertEquals(hashedPassword, user.hashedPassword, "Constructor should set hashedPassword correctly");
+    }
+
+    @Test
+    void constructor_WithNullValues_ShouldAcceptNullValues() {
+        User user = new User(null, null, null);
+
+        assertNull(user.id, "Constructor should accept null id");
+        assertNull(user.username, "Constructor should accept null username");
+        assertNull(user.hashedPassword, "Constructor should accept null hashedPassword");
+    }
+
+    @Test
+    void constructor_WithEmptyStrings_ShouldAcceptEmptyStrings() {
+        User user = new User("", "", "");
+
+        assertEquals("", user.id, "Constructor should accept empty id");
+        assertEquals("", user.username, "Constructor should accept empty username");
+        assertEquals("", user.hashedPassword, "Constructor should accept empty hashedPassword");
+    }
+
+    @Test
+    void token_WithDifferentSecrets_ShouldGenerateDifferentTokens() {
+        String secret1 = "secret1";
+        String secret2 = "secret2";
+
+        String token1 = testUser.token(secret1);
+        String token2 = testUser.token(secret2);
+
+        assertNotEquals(token1, token2, "Tokens generated with different secrets should be different");
+    }
+
+    @Test
+    void token_WithEmptySecret_ShouldThrowException() {
+        assertThrows(Exception.class, () -> testUser.token(""), "Token generation with empty secret should throw exception");
+    }
+
+    @Test
+    void token_WithNullSecret_ShouldThrowException() {
+        assertThrows(Exception.class, () -> testUser.token(null), "Token generation with null secret should throw exception");
+    }
+
+    @Test
+    void assertAuth_WithNullSecret_ShouldThrowUnauthorized() {
+        String token = testUser.token(TEST_SECRET);
+        assertThrows(Unauthorized.class, () -> User.assertAuth(null, token), "assertAuth with null secret should throw Unauthorized");
+    }
+
+    @Test
+    void assertAuth_WithEmptySecret_ShouldThrowUnauthorized() {
+        String token = testUser.token(TEST_SECRET);
+        assertThrows(Unauthorized.class, () -> User.assertAuth("", token), "assertAuth with empty secret should throw Unauthorized");
+    }
+
+    @Test
+    void assertAuth_WithNullToken_ShouldThrowUnauthorized() {
+        assertThrows(Unauthorized.class, () -> User.assertAuth(TEST_SECRET, null), "assertAuth with null token should throw Unauthorized");
+    }
+
+    @Test
+    void assertAuth_WithEmptyToken_ShouldThrowUnauthorized() {
+        assertThrows(Unauthorized.class, () -> User.assertAuth(TEST_SECRET, ""), "assertAuth with empty token should throw Unauthorized");
+    }
+
+    @Test
+    void assertAuth_WithMalformedToken_ShouldThrowUnauthorized() {
+        String malformedToken = "not.a.valid.jwt.token";
+        assertThrows(Unauthorized.class, () -> User.assertAuth(TEST_SECRET, malformedToken), "assertAuth with malformed token should throw Unauthorized");
+    }
+
+    @Test
+    void fetch_WithNullUsername_ShouldHandleGracefully() throws Exception {
+        when(Postgres.connection()).thenReturn(mockConnection);
+        when(mockConnection.createStatement()).thenReturn(mockStatement);
+        
