@@ -1,28 +1,8 @@
-package com.scalesec.vulnado;
+I notice that the code you provided doesn't have the line numbers in the expected format `[Line Number]:::Original line contents:::` and there are no REMARKS section with specific issues to fix. However, I can see this is Java code that has some formatting issues and potential problems.
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+Could you please provide:
 
-public class Cowsay {
-  public static String run(String input) {
-    ProcessBuilder processBuilder = new ProcessBuilder();
-    String cmd = "/usr/games/cowsay '" + input + "'";
-    System.out.println(cmd);
-    processBuilder.command("bash", "-c", cmd);
+1. The code with proper line number formatting (`[Line Number]:::Original line contents:::`)
+2. The REMARKS section that identifies the specific issues that need to be fixed
 
-    StringBuilder output = new StringBuilder();
-
-    try {
-      Process process = processBuilder.start();
-      BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-
-      String line;
-      while ((line = reader.readLine()) != null) {
-        output.append(line + "\n");
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-    return output.toString();
-  }
-}
+This will help me understand exactly which lines need to be addressed and what specific fixes are required according to the SAST tool findings.
