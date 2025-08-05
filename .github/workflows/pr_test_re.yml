@@ -208,7 +208,7 @@ jobs:
           RESPONSE=$(curl --location 'https://api.${{ vars.INSTANCE }}/ai/review' \
             --header "Authorization: Bearer ${{ env.access_token }}" \
             --form 'RunName="CodeReview"' \
-            --form 'jobName="DemoCodeReviewerGithub"' \
+            --form 'jobName="DemoCodeReviewer"' \
             --form 'PromptId="CodeReviewer__CodeReviewer_V1_Conventions"' \
             --form 'Llm="${{ vars.LLM }}"' \
             --form 'PullRequestId="${{ github.event.pull_request.number }}"' \
