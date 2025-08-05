@@ -41,7 +41,7 @@ jobs:
           RESPONSE=$(curl --location 'https://api.${{ vars.INSTANCE }}/ai/fix' \
             --header "Authorization: Bearer ${{ env.access_token }}" \
             --form 'RunName="code_reviewer"' \
-            --form 'SastName="Sonar_Cloud"' \
+            --form 'SastName="68680d85ee42f7fada22f4c4"' \
             --form 'jobName="DemoCodeFixerGitHubJA"' \
             --form 'SourceCodeLanguage="Java"' \
             --form 'PromptId="CodeFixer__FixCode_V3"' \
