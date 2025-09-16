@@ -41,8 +41,8 @@ jobs:
           RESPONSE=$(curl --location 'https://api.${{ vars.INSTANCE }}/ai/fix' \
             --header "Authorization: Bearer ${{ env.access_token }}" \
             --form 'RunName="code_reviewer"' \
-            --form 'SastName="68680d85ee42f7fada22f4c4"' \
-            --form 'jobName="DemoCodeFixerGitHubJA"' \
+            --form 'SastName="68c9b94673191c113b8d7ee1"' \
+            --form 'jobName="DemoCodeFixer"' \
             --form 'SourceCodeLanguage="Java"' \
             --form 'PromptId="CodeFixer__FixCode_V3"' \
             --form 'TargetExtension="java"' \
