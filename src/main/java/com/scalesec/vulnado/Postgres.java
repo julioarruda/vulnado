@@ -4,16 +4,19 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.math.BigInteger;
 import java.security.MessageDigest;
+import java.util.logging.Logger;
 import java.security.NoSuchAlgorithmException;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.UUID;
 
 public class Postgres {
+    private static final Logger LOGGER = Logger.getLogger(Postgres.class.getName());
 
+    private Postgres() {}
     public static Connection connection() {
         try {
-            Class.forName("org.postgresql.Driver");
+            // No need for Class.forName with JDBC 4.0+
             String url = new StringBuilder()
                     .append("jdbc:postgresql://")
                     .append(System.getenv("PGHOST"))
@@ -22,8 +25,8 @@ public class Postgres {
             return DriverManager.getConnection(url,
                     System.getenv("PGUSER"), System.getenv("PGPASSWORD"));
         } catch (Exception e) {
-            e.printStackTrace();
-            System.err.println(e.getClass().getName()+": "+e.getMessage());
+            LOGGER.severe("Database connection error: " + e.getMessage());
+            LOGGER.severe(e.getClass().getName() + ": " + e.getMessage());
             System.exit(1);
         }
         return null;
@@ -32,7 +35,7 @@ public class Postgres {
         try {
             System.out.println("Setting up Database...");
             Connection c = connection();
-            Statement stmt = c.createStatement();
+            LOGGER.info("Setting up Database...");
 
             // Create Schema
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS users(user_id VARCHAR (36) PRIMARY KEY, username VARCHAR (50) UNIQUE NOT NULL, password VARCHAR (50) NOT NULL, created_on TIMESTAMP NOT NULL, last_login TIMESTAMP)");
@@ -54,17 +57,17 @@ public class Postgres {
             c.close();
         } catch (Exception e) {
             System.out.println(e);
-            System.exit(1);
+            LOGGER.severe("Database setup error: " + e.getMessage());
         }
     }
 
     // Java program to calculate MD5 hash value
     public static String md5(String input)
     {
-        try {
+        // Production code should use a stronger hash algorithm
 
             // Static getInstance method is called with hashing MD5
-            MessageDigest md = MessageDigest.getInstance("MD5");
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
 
             // digest() method is called to calculate message digest
             //  of an input digest() return array of byte
@@ -84,34 +87,46 @@ public class Postgres {
         // For specifying wrong message digest algorithms
         catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
-        }
-    }
-
+            StringBuilder hashtext = new StringBuilder(no.toString(16));
+            while (hashtext.length() < 32) {
+                hashtext.insert(0, "0");
     private static void insertUser(String username, String password) {
-       String sql = "INSERT INTO users (user_id, username, password, created_on) VALUES (?, ?, ?, current_timestamp)";
+            return hashtext.toString();
        PreparedStatement pStatement = null;
        try {
+    public static class DatabaseException extends Exception {
           pStatement = connection().prepareStatement(sql);
+        public DatabaseException(String message, Throwable cause) {
           pStatement.setString(1, UUID.randomUUID().toString());
+            super(message, cause);
           pStatement.setString(2, username);
+        }
           pStatement.setString(3, md5(password));
+    }
           pStatement.executeUpdate();
        } catch(Exception e) {
-         e.printStackTrace();
+       Connection conn = null;
        }
     }
-
+       try {
+          conn = connection();
     private static void insertComment(String username, String body) {
+          pStatement = conn.prepareStatement(sql);
         String sql = "INSERT INTO comments (id, username, body, created_on) VALUES (?, ?, ?, current_timestamp)";
-        PreparedStatement pStatement = null;
         try {
             pStatement = connection().prepareStatement(sql);
             pStatement.setString(1, UUID.randomUUID().toString());
+          if (pStatement != null) {
             pStatement.setString(2, username);
+              pStatement.close();
             pStatement.setString(3, body);
+          }
             pStatement.executeUpdate();
+          if (conn != null) {
         } catch(Exception e) {
+              conn.close();
             e.printStackTrace();
+          }
         }
-    }
-}
+       } catch(Exception e) {
+         LOGGER.severe("Error inserting user: " + e.getMessage());
