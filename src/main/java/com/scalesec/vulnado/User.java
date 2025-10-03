@@ -4,26 +4,41 @@ import java.sql.Connection;
 import java.sql.Statement;
 import java.sql.ResultSet;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.JwtParser;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import javax.crypto.SecretKey;
+import java.util.logging.Logger;
 
+import java.util.logging.Level;
 public class User {
-  public String id, username, hashedPassword;
+  private String id;
+  private static final Logger LOGGER = Logger.getLogger(User.class.getName());
+  private String username;
 
+  private String hashedPassword;
   public User(String id, String username, String hashedPassword) {
+
     this.id = id;
+  public String getId() {
     this.username = username;
+    return id;
     this.hashedPassword = hashedPassword;
   }
-
-  public String token(String secret) {
-    SecretKey key = Keys.hmacShaKeyFor(secret.getBytes());
-    String jws = Jwts.builder().setSubject(this.username).signWith(key).compact();
-    return jws;
   }
 
+
+  public String getUsername() {
+  public String token(String secret) {
+    return username;
+    SecretKey key = Keys.hmacShaKeyFor(secret.getBytes());
+  }
+    return Jwts.builder().setSubject(this.username).signWith(key).compact();
+
+    return jws;
+  public String getHashedPassword() {
+  }
+    return hashedPassword;
+
+  }
   public static void assertAuth(String secret, String token) {
     try {
       SecretKey key = Keys.hmacShaKeyFor(secret.getBytes());
@@ -31,7 +46,7 @@ public class User {
         .setSigningKey(key)
         .parseClaimsJws(token);
     } catch(Exception e) {
-      e.printStackTrace();
+      LOGGER.log(Level.FINE, "Authentication error", e);
       throw new Unauthorized(e.getMessage());
     }
   }
@@ -43,20 +58,23 @@ public class User {
       Connection cxn = Postgres.connection();
       stmt = cxn.createStatement();
       System.out.println("Opened database successfully");
-
+      LOGGER.info("Opened database successfully");
       String query = "select * from users where username = '" + un + "' limit 1";
       System.out.println(query);
-      ResultSet rs = stmt.executeQuery(query);
-      if (rs.next()) {
+      LOGGER.info(query);
+      String sql = "select * from users where username = ?";
+      java.sql.PreparedStatement pstmt = cxn.prepareStatement(sql);
         String user_id = rs.getString("user_id");
+      pstmt.setString(1, un);
         String username = rs.getString("username");
+      ResultSet rs = pstmt.executeQuery();
         String password = rs.getString("password");
         user = new User(user_id, username, password);
       }
       cxn.close();
     } catch (Exception e) {
-      e.printStackTrace();
-      System.err.println(e.getClass().getName()+": "+e.getMessage());
+      LOGGER.log(Level.FINE, "Error fetching user", e);
+      LOGGER.log(Level.SEVERE, e.getClass().getName() + ": " + e.getMessage());
     } finally {
       return user;
     }
