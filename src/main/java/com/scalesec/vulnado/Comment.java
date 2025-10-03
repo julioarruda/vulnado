@@ -1,21 +1,25 @@
 package com.scalesec.vulnado;
 
-import org.apache.catalina.Server;
 import java.sql.*;
 import java.util.Date;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.UUID;
+import java.util.logging.Logger;
+import java.util.UUID;
 
 public class Comment {
-  public String id, username, body;
-  public Timestamp created_on;
+  private String id;
+  private String username;
+  private Timestamp createdOn;
+  private String body;
 
-  public Comment(String id, String username, String body, Timestamp created_on) {
+  private static final Logger LOGGER = Logger.getLogger(Comment.class.getName());
     this.id = id;
+  public Comment(String id, String username, String body, Timestamp createdOn) {
     this.username = username;
     this.body = body;
-    this.created_on = created_on;
+    this.createdOn = createdOn;
   }
 
   public static Comment create(String username, String body){
@@ -33,9 +37,9 @@ public class Comment {
     }
   }
 
-  public static List<Comment> fetch_all() {
+  public static List<Comment> fetchAll() {
     Statement stmt = null;
-    List<Comment> comments = new ArrayList();
+    List<Comment> comments = new ArrayList<>();
     try {
       Connection cxn = Postgres.connection();
       stmt = cxn.createStatement();
@@ -46,41 +50,55 @@ public class Comment {
         String id = rs.getString("id");
         String username = rs.getString("username");
         String body = rs.getString("body");
-        Timestamp created_on = rs.getTimestamp("created_on");
-        Comment c = new Comment(id, username, body, created_on);
-        comments.add(c);
+        Timestamp createdOn = rs.getTimestamp("created_on");
+        Comment comment = new Comment(id, username, body, createdOn);
+        comments.add(comment);
       }
       cxn.close();
     } catch (Exception e) {
-      e.printStackTrace();
-      System.err.println(e.getClass().getName()+": "+e.getMessage());
+      LOGGER.severe(e.getMessage());
+      LOGGER.severe(e.getClass().getName() + ": " + e.getMessage());
     } finally {
       return comments;
     }
   }
 
-  public static Boolean delete(String id) {
+  public static boolean delete(String id) {
+    Connection con = null;
+    PreparedStatement pStatement = null;
+      String sql = "DELETE FROM comments where id = ?";
     try {
       String sql = "DELETE FROM comments where id = ?";
-      Connection con = Postgres.connection();
-      PreparedStatement pStatement = con.prepareStatement(sql);
+      con = Postgres.connection();
+      pStatement = con.prepareStatement(sql);
       pStatement.setString(1, id);
       return 1 == pStatement.executeUpdate();
     } catch(Exception e) {
-      e.printStackTrace();
-    } finally {
+      LOGGER.severe(e.getMessage());
       return false;
+    } finally {
+      try {
     }
-  }
+        if (pStatement != null) pStatement.close();
 
-  private Boolean commit() throws SQLException {
+        if (con != null) con.close();
+  private boolean commit() throws SQLException {
+      } catch (SQLException e) {
     String sql = "INSERT INTO comments (id, username, body, created_on) VALUES (?,?,?,?)";
-    Connection con = Postgres.connection();
-    PreparedStatement pStatement = con.prepareStatement(sql);
-    pStatement.setString(1, this.id);
-    pStatement.setString(2, this.username);
+        LOGGER.severe("Error closing resources: " + e.getMessage());
+    Connection con = null;
+    PreparedStatement pStatement = null;
+      }
+    String sql = "INSERT INTO comments (id, username, body, created_on) VALUES (?,?,?,?)";
+    try {
+    con = Postgres.connection();
+    pStatement = con.prepareStatement(sql);
     pStatement.setString(3, this.body);
-    pStatement.setTimestamp(4, this.created_on);
+    pStatement.setTimestamp(4, this.createdOn);
     return 1 == pStatement.executeUpdate();
+    } finally {
   }
+      if (pStatement != null) pStatement.close();
 }
+  public String getId() {
+      if (con != null) con.close();
