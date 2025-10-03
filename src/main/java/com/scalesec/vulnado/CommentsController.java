@@ -13,39 +13,51 @@ public class CommentsController {
   @Value("${app.secret}")
   private String secret;
 
-  @CrossOrigin(origins = "*")
-  @RequestMapping(value = "/comments", method = RequestMethod.GET, produces = "application/json")
+  @CrossOrigin(origins = "http://localhost:8080") // Restrict CORS to specific origin
+  @GetMapping(value = "/comments", produces = "application/json")
   List<Comment> comments(@RequestHeader(value="x-auth-token") String token) {
     User.assertAuth(secret, token);
     return Comment.fetch_all();
   }
 
-  @CrossOrigin(origins = "*")
-  @RequestMapping(value = "/comments", method = RequestMethod.POST, produces = "application/json", consumes = "application/json")
+  @CrossOrigin(origins = "http://localhost:8080") // Restrict CORS to specific origin
+  @PostMapping(value = "/comments", produces = "application/json", consumes = "application/json")
   Comment createComment(@RequestHeader(value="x-auth-token") String token, @RequestBody CommentRequest input) {
-    return Comment.create(input.username, input.body);
+    return Comment.create(input.getUsername(), input.getBody());
   }
 
-  @CrossOrigin(origins = "*")
-  @RequestMapping(value = "/comments/{id}", method = RequestMethod.DELETE, produces = "application/json")
+  @CrossOrigin(origins = "http://localhost:8080") // Restrict CORS to specific origin
+  @DeleteMapping(value = "/comments/{id}", produces = "application/json")
   Boolean deleteComment(@RequestHeader(value="x-auth-token") String token, @PathVariable("id") String id) {
     return Comment.delete(id);
   }
 }
 
 class CommentRequest implements Serializable {
-  public String username;
-  public String body;
+  private String username;
+  public String getUsername() {
+  private String body;
+    return username;
 }
+  }
 
+  public void setUsername(String username) {
 @ResponseStatus(HttpStatus.BAD_REQUEST)
+    this.username = username;
 class BadRequest extends RuntimeException {
+  }
   public BadRequest(String exception) {
+  public String getBody() {
     super(exception);
+    return body;
+  }
   }
 }
+  public void setBody(String body) {
 
+    this.body = body;
 @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+  }
 class ServerError extends RuntimeException {
   public ServerError(String exception) {
     super(exception);
