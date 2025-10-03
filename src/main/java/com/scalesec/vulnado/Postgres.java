@@ -4,16 +4,20 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.math.BigInteger;
 import java.security.MessageDigest;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.security.NoSuchAlgorithmException;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.UUID;
 
 public class Postgres {
+    private static final Logger LOGGER = Logger.getLogger(Postgres.class.getName());
 
+    private Postgres() {}
     public static Connection connection() {
         try {
-            Class.forName("org.postgresql.Driver");
+            // Class.forName is not needed since JDBC 4.0
             String url = new StringBuilder()
                     .append("jdbc:postgresql://")
                     .append(System.getenv("PGHOST"))
@@ -22,15 +26,15 @@ public class Postgres {
             return DriverManager.getConnection(url,
                     System.getenv("PGUSER"), System.getenv("PGPASSWORD"));
         } catch (Exception e) {
-            e.printStackTrace();
-            System.err.println(e.getClass().getName()+": "+e.getMessage());
+            LOGGER.log(Level.SEVERE, "Database connection error", e);
+            LOGGER.severe(e.getClass().getName() + ": " + e.getMessage());
             System.exit(1);
         }
         return null;
     }
     public static void setup(){
         try {
-            System.out.println("Setting up Database...");
+            LOGGER.info("Setting up Database...");
             Connection c = connection();
             Statement stmt = c.createStatement();
 
@@ -53,7 +57,7 @@ public class Postgres {
             insertComment("alice", "OMG so cute!");
             c.close();
         } catch (Exception e) {
-            System.out.println(e);
+            LOGGER.log(Level.SEVERE, "Database setup error", e);
             System.exit(1);
         }
     }
@@ -61,10 +65,10 @@ public class Postgres {
     // Java program to calculate MD5 hash value
     public static String md5(String input)
     {
-        try {
+        // This method should not be used in production code
 
             // Static getInstance method is called with hashing MD5
-            MessageDigest md = MessageDigest.getInstance("MD5");
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
 
             // digest() method is called to calculate message digest
             //  of an input digest() return array of byte
@@ -84,14 +88,14 @@ public class Postgres {
         // For specifying wrong message digest algorithms
         catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
-        }
-    }
-
-    private static void insertUser(String username, String password) {
-       String sql = "INSERT INTO users (user_id, username, password, created_on) VALUES (?, ?, ?, current_timestamp)";
+            StringBuilder hashtext = new StringBuilder(no.toString(16));
+            while (hashtext.length() < 32) {
+                hashtext.insert(0, "0");
+            }
+            return hashtext.toString();
        PreparedStatement pStatement = null;
        try {
-          pStatement = connection().prepareStatement(sql);
+            throw new HashingException("Error generating hash", e);
           pStatement.setString(1, UUID.randomUUID().toString());
           pStatement.setString(2, username);
           pStatement.setString(3, md5(password));
@@ -99,19 +103,28 @@ public class Postgres {
        } catch(Exception e) {
          e.printStackTrace();
        }
-    }
+       Connection conn = null;
+       try {
 
+          conn = connection();
     private static void insertComment(String username, String body) {
+          pStatement = conn.prepareStatement(sql);
         String sql = "INSERT INTO comments (id, username, body, created_on) VALUES (?, ?, ?, current_timestamp)";
-        PreparedStatement pStatement = null;
-        try {
-            pStatement = connection().prepareStatement(sql);
-            pStatement.setString(1, UUID.randomUUID().toString());
-            pStatement.setString(2, username);
-            pStatement.setString(3, body);
-            pStatement.executeUpdate();
+          pStatement.setString(1, UUID.randomUUID().toString());
+          pStatement.setString(2, username);
+          pStatement.setString(3, md5(password));
+          pStatement.executeUpdate();
+       } catch(Exception e) {
+         LOGGER.log(Level.SEVERE, "Error inserting user", e);
+       } finally {
+           try {
         } catch(Exception e) {
+               if (pStatement != null) pStatement.close();
             e.printStackTrace();
+               if (conn != null) conn.close();
         }
+           } catch (Exception e) {
     }
+               LOGGER.log(Level.SEVERE, "Error closing resources", e);
 }
+           }
