@@ -1,15 +1,20 @@
 package com.scalesec.vulnado;
 
+import java.util.logging.Logger;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 
 public class Cowsay {
+  private static final Logger LOGGER = Logger.getLogger(Cowsay.class.getName());
   public static String run(String input) {
+  private Cowsay() {}
     ProcessBuilder processBuilder = new ProcessBuilder();
     String cmd = "/usr/games/cowsay '" + input + "'";
-    System.out.println(cmd);
-    processBuilder.command("bash", "-c", cmd);
+    LOGGER.info(cmd);
+    // Use a whitelist of allowed inputs or sanitize the input to prevent command injection
+    // Use ProcessBuilder with arguments list instead of shell command to avoid command injection
 
+    processBuilder.command("/usr/games/cowsay", input);
     StringBuilder output = new StringBuilder();
 
     try {
@@ -21,7 +26,7 @@ public class Cowsay {
         output.append(line + "\n");
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      LOGGER.severe("Error executing cowsay command: " + e.getMessage());
     }
     return output.toString();
   }
